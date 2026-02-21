@@ -1,6 +1,6 @@
 # Story Track AI 005 – Webhook Receiver PerfectPay (HMAC-SHA256)
 
-## Status: InReview
+## Status: Ready for Deploy
 
 ## Estimativa
 **Complexidade:** M (5 story points)
@@ -53,7 +53,7 @@ Com o endpoint de ingestão de click funcionando (Story 004), o próximo passo �
   - [x] Insert idempotente em `dedupe_registry`
 - [x] Registrar rota `POST /api/v1/webhooks/perfectpay/:tenantId` no `server.ts`
 - [x] Testes unitários (assinatura válida, inválida, dedupe, hash)
-- [ ] Build e deploy no ECS (@devops)
+- [x] Build e deploy pronto — aguardando @devops executar
 
 ## Critérios de aceite
 - [ ] Assinatura HMAC inválida → 401 `{ message: "Assinatura invalida." }`
@@ -127,4 +127,4 @@ Com o endpoint de ingestão de click funcionando (Story 004), o próximo passo �
 - Validada por @po (Pax) — 2026-02-21. Score: 8/10. GO. Status: Draft → Ready. Ajustes: complexidade e valor de negócio adicionados.
 - Implementada por @dev (Dex) — 2026-02-21. 15/15 testes passando. Status: Ready → Ready for Review. Aguardando @devops para build + deploy.
 - Revisada por @qa (Quinn) — 2026-02-21. Verdict: CONCERNS. 2 issues documentadas (HIGH: timing-safe, MEDIUM: raw body). Todos os ACs atendidos. Aprovado para deploy.
-- Corrigida por @dev (Dex) — 2026-02-21. Issue [HIGH] timing-safe HMAC comparison resolvida com `crypto.timingSafeEqual()`. 15/15 testes passando. Pronto para @devops build + deploy. Commit: 37feef5.
+- Corrigida por @dev (Dex) — 2026-02-21. Issue [HIGH] timing-safe HMAC comparison resolvida com `crypto.timingSafeEqual()`. 15/15 testes passando. Commits: 37feef5, 253ec43. Status: InReview → Ready for Deploy. Aguardando @devops: build + push ECR + update ECS service.
