@@ -174,47 +174,101 @@ enum MatchStrategy {
   unmatched
 }
 
+enum GatewayType {
+  hotmart
+  kiwify
+  stripe
+  pagseguro
+  perfectpay
+}
+
+// Webhook Raw Storage (for audit trail, Story 009 reconstruction)
+model WebhookRaw {
+  id              String        @id @default(cuid())
+  tenantId        String        @db.Uuid
+  gateway         GatewayType
+  gatewayEventId  String        // Unique per gateway per tenant
+
+  rawPayload      Json          // Original webhook JSON
+  eventType       String?       // "purchase_approved", "charge.succeeded", etc
+
+  createdAt       DateTime      @default(now())
+
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  conversion      Conversion?   @relation(fields: [conversionId], references: [id])
+
+  @@unique([tenantId, gateway, gatewayEventId])
+  @@index([tenantId, gateway, createdAt(sort: Desc)])
+  @@index([tenantId, eventType])
+}
+
 model Conversion {
   id              String        @id @default(cuid())
   tenantId        String        @db.Uuid
 
-  // Webhook metadata
-  gateway         String        // "hotmart" | "kiwify" | "stripe" | "pagseguro"
-  gatewayEventId  String        // Unique per gateway per tenant for dedup
+  // Webhook reference
+  webhookRawId    String
+  gateway         GatewayType
+  gatewayEventId  String        // For dedup
 
-  // Purchase details
+  // PURCHASE DATA
   amount          Float?
   currency        String        @default("BRL")
 
-  // Matching identifiers
+  // ===== 15 META CAPI PARAMETERS (HASHED PII) =====
+  // Facebook IDs (NOT hashed)
   fbc             String?       // Facebook Container ID
   fbp             String?       // Facebook Pixel ID
-  customerEmailHash String?     // SHA-256 (LGPD)
-  customerPhone   String?       // Optional
 
-  // Match result
-  matchedClickId  String?       @db.Uuid  // FK to Click (NULL = unmatched)
-  matchStrategy   MatchStrategy?           // Strategy used (fbc|fbp|email|unmatched)
+  // Contact info (HASHED SHA-256)
+  emailHash       String?       // SHA-256(email)
+  phoneHash       String?       // SHA-256(phone)
 
-  // CAPI dispatch (Story 009)
+  // Personal info (HASHED SHA-256)
+  firstNameHash   String?       // SHA-256(first name)
+  lastNameHash    String?       // SHA-256(last name)
+  dateOfBirthHash String?       // SHA-256(YYYYMMDD)
+
+  // Address (HASHED SHA-256)
+  cityHash        String?       // SHA-256(city)
+  stateHash       String?       // SHA-256(state)
+  countryCode     String?       // ISO 2-letter code (NOT hashed)
+  zipCodeHash     String?       // SHA-256(postal code)
+
+  // External IDs (HASHED)
+  externalIdHash  String?       // SHA-256(customer ID)
+  facebookLoginId String?       // Facebook login ID (hashed)
+
+  // Browser/Device (NOT hashed, from Click)
+  clientIp        String?       // From Click.ip
+  userAgent       String?       // From Click.userAgent
+
+  // ===== MATCHING RESULT =====
+  matchedClickId  String?       @db.Uuid
+  matchStrategy   MatchStrategy?
+
+  // ===== CAPI DISPATCH (Story 009) =====
   sentToCAPI      Boolean       @default(false)
   capiResponse    Json?
+  capiRequestPayload Json?
 
-  // Timestamps
+  // ===== TIMESTAMPS =====
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  // Relations
-  tenant       Tenant @relation(fields: [tenantId], references: [id])
-  matchedClick Click? @relation(fields: [matchedClickId], references: [id], onDelete: SetNull)
+  // ===== RELATIONS =====
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  webhookRaw      WebhookRaw    @relation(fields: [webhookRawId], references: [id], onDelete: Cascade)
+  matchedClick    Click?        @relation(fields: [matchedClickId], references: [id], onDelete: SetNull)
 
-  // Indexes for matching queries
-  @@unique([tenantId, gateway, gatewayEventId])  // Dedup enforcement
-  @@index([tenantId, fbc, createdAt(sort: Desc)])            // FBC matching
-  @@index([tenantId, fbp, createdAt(sort: Desc)])            // FBP matching
-  @@index([tenantId, customerEmailHash, createdAt(sort: Desc)])  // Email matching
-  @@index([tenantId, sentToCAPI, createdAt])    // Replay queries
-  @@index([tenantId, matchStrategy, createdAt]) // Analytics: match rate per strategy
+  // ===== INDEXES =====
+  @@unique([tenantId, gateway, gatewayEventId])
+  @@index([tenantId, fbc, createdAt(sort: Desc)])
+  @@index([tenantId, fbp, createdAt(sort: Desc)])
+  @@index([tenantId, emailHash, createdAt(sort: Desc)])
+  @@index([tenantId, sentToCAPI, createdAt])
+  @@index([tenantId, matchStrategy, createdAt])
+  @@index([tenantId, gateway, createdAt(sort: Desc)])
 }
 
 model MatchLog {
