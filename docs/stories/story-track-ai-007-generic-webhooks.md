@@ -1,6 +1,6 @@
 # Story Track AI 007 – Generic Webhook Receiver
 
-## Status: Draft
+## Status: InProgress
 
 ## Contexto
 
@@ -32,14 +32,14 @@ Cada gateway tem:
 
 ## Tasks
 
-- [ ] Desenhar arquitetura genérica (factory + adapters) com @architect
-- [ ] Criar schemas Zod para cada gateway (`hotmartWebhookSchema`, `kiwifyWebhookSchema`, etc.)
-- [ ] Implementar router genérico `POST /api/v1/webhooks/:gateway/:tenantId`
-- [ ] Criar adapter para Hotmart (converter para formato interno)
-- [ ] Criar adapter para Kiwify
-- [ ] Criar adapter para Stripe
-- [ ] Criar adapter para PagSeguro
-- [ ] Adicionar testes unitários para cada adapter
+- [x] Desenhar arquitetura genérica (factory + adapters) com @architect
+- [x] Criar schemas Zod para cada gateway (`hotmartWebhookSchema`, `kiwifyWebhookSchema`, etc.)
+- [x] Implementar router genérico `POST /api/v1/webhooks/:gateway/:tenantId`
+- [x] Criar adapter para Hotmart (converter para formato interno)
+- [x] Criar adapter para Kiwify
+- [x] Criar adapter para Stripe
+- [x] Criar adapter para PagSeguro
+- [x] Adicionar testes unitários para cada adapter
 - [ ] Validar deduplicação com event IDs únicos
 - [ ] Testar com webhooks reais (ou simulados)
 
@@ -99,6 +99,7 @@ Cada gateway tem:
 ## Change Log
 
 - Story criada por @dev (Dex) como scaffold — 2026-02-21. Awaiting @sm refinement.
+- Story implementada por @dev (Dex) — 2026-02-21. Factory pattern + 4 adapters (Hotmart, Kiwify, Stripe, PagSeguro) com timing-safe HMAC. 19 testes passando. Lint OK, typecheck OK. Ready for @po validation.
 
 ---
 
