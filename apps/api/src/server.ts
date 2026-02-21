@@ -13,6 +13,7 @@ import { handleClickIngest } from './click-handler';
 import { handlePageviewIngest } from './pageview-handler';
 import { handleCheckoutIngest } from './checkout-handler';
 import { handlePerfectPayWebhook } from './perfectpay-webhook-handler';
+import { registerWebhookRoutes } from './webhooks/webhook-router';
 import { prisma } from './db';
 
 type PerfectPayWebhookParams = {
@@ -196,6 +197,9 @@ async function bootstrap() {
 
     return reply.code(202).send({ ok: true });
   });
+
+  // Register generic webhook routes for multi-gateway support
+  await registerWebhookRoutes(app);
 
   await app.listen({ port: 3001, host: '0.0.0.0' });
 }
