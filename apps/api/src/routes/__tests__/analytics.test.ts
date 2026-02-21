@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import Fastify from 'fastify';
+import Fastify, { FastifyInstance } from 'fastify';
 import { register as registerAnalyticsRoutes } from '../analytics';
-import { prisma } from '../../db';
 
 describe('Analytics Routes (Story 010)', () => {
-  let app: any;
+  let app: FastifyInstance;
   const tenantId = 'test-tenant-010';
   const headers = { 'x-tenant-id': tenantId };
 
@@ -86,8 +85,8 @@ describe('Analytics Routes (Story 010)', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.payload);
-      body.data?.forEach((event: any) => {
+      const body = JSON.parse(response.payload) as { data?: Array<{ status: string }> };
+      body.data?.forEach((event) => {
         expect(event.status).toBe('sent');
       });
     });
@@ -100,8 +99,9 @@ describe('Analytics Routes (Story 010)', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.payload);
-      body.data?.forEach((event: any) => {
+      interface EventData { email?: string }
+      const body = JSON.parse(response.payload) as { data?: EventData[] };
+      body.data?.forEach((event) => {
         if (event.email) {
           expect(event.email).toMatch(/^\*+@.+\*+$/);
         }
@@ -158,8 +158,9 @@ describe('Analytics Routes (Story 010)', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.payload);
-      body.data?.forEach((metric: any) => {
+      interface PerformanceMetric { latency_p50?: number; latency_p95?: number; latency_p99?: number }
+      const body = JSON.parse(response.payload) as { data?: PerformanceMetric[] };
+      body.data?.forEach((metric) => {
         expect(metric).toHaveProperty('latency_p50');
         expect(metric).toHaveProperty('latency_p95');
         expect(metric).toHaveProperty('latency_p99');
@@ -235,12 +236,11 @@ describe('Analytics Routes (Story 010)', () => {
         headers: { 'x-tenant-id': 'tenant-b' },
       });
 
-      const body1 = JSON.parse(response1.payload);
-      const body2 = JSON.parse(response2.payload);
-
       // Both should return 200, but data should be different (tenant-scoped)
       expect(response1.statusCode).toBe(200);
       expect(response2.statusCode).toBe(200);
+      // Verify payloads are different (tenant-scoped)
+      expect(response1.payload).not.toBe(response2.payload);
     });
   });
 });

@@ -16,17 +16,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { db } from '../db';
-import { PrismaClient } from '@prisma/client';
 
 /**
  * Query validation schemas
  */
-const PeriodSchema = z.enum(['24h', '7d', '30d', 'custom']).default('7d');
-const DateRangeSchema = z.object({
-  start_date: z.string().datetime().optional(),
-  end_date: z.string().datetime().optional(),
-});
-
 const PaginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(500).default(50),
@@ -61,7 +54,7 @@ function getDateRange(period: string, customStart?: string, customEnd?: string) 
 /**
  * Helper: Mask PII from responses
  */
-function maskPII(obj: any): any {
+function maskPII(obj: Record<string, unknown>): Record<string, unknown> {
   if (!obj) return obj;
 
   const masked = { ...obj };
@@ -83,7 +76,7 @@ async function logAudit(
   userId: string | undefined,
   action: string,
   resource: string,
-  queryParams?: Record<string, any>
+  queryParams?: Record<string, unknown>
 ) {
   try {
     await db.auditLog.create({
@@ -115,8 +108,19 @@ async function getMetrics(request: FastifyRequest, reply: FastifyReply) {
   const { start, end } = getDateRange(period, customStart, customEnd);
 
   try {
+    interface DispatchMetric {
+      total_events: number;
+      success_count: number;
+      failed_count: number;
+      dlq_count: number;
+      latency_p95: number;
+    }
+    interface MatchRateMetric {
+      match_rate: number;
+    }
+
     // Query: Dispatch summary from v_dispatch_summary view
-    const dispatchData = await db.$queryRaw<any[]>`
+    const dispatchData = await db.$queryRaw<DispatchMetric[]>`
       SELECT
         COALESCE(SUM(total_attempts), 0) as total_events,
         COALESCE(SUM(success_count), 0) as success_count,
@@ -130,7 +134,7 @@ async function getMetrics(request: FastifyRequest, reply: FastifyReply) {
     `;
 
     // Query: Match rate from v_match_rate_by_tenant
-    const matchRateData = await db.$queryRaw<any[]>`
+    const matchRateData = await db.$queryRaw<MatchRateMetric[]>`
       SELECT
         COALESCE(AVG(match_rate_pct), 0)::numeric(5,2) as match_rate
       FROM v_match_rate_by_tenant
@@ -184,7 +188,7 @@ async function getEvents(request: FastifyRequest, reply: FastifyReply) {
   const skip = (pageSchema.page - 1) * pageSchema.limit;
 
   try {
-    const where: any = {
+    const where: Record<string, unknown> = {
       tenant_id: tenantId,
       created_at: { gte: start, lte: end },
     };
@@ -222,7 +226,7 @@ async function getEvents(request: FastifyRequest, reply: FastifyReply) {
       db.dispatchAttempt.count({ where }),
     ]);
 
-    const masked = events.map((e: any) => maskPII(e));
+    const masked = events.map((e) => maskPII(e as unknown as Record<string, unknown>));
 
     await logAudit(tenantId, request.user.id, 'GET', '/analytics/events', {
       page: pageSchema.page,
@@ -335,7 +339,8 @@ async function getMatchRate(request: FastifyRequest, reply: FastifyReply) {
 
     query += ` ORDER BY date DESC`;
 
-    const matchRate = await db.$queryRaw<any[]>(query);
+    interface MatchRateTrend { date: string; match_rate_pct: number }
+    const matchRate = await db.$queryRaw<MatchRateTrend[]>(query);
 
     await logAudit(tenantId, request.user.id, 'GET', '/analytics/match-rate', { period, gateway });
 
@@ -361,7 +366,15 @@ async function getPerformance(request: FastifyRequest, reply: FastifyReply) {
   const { start, end } = getDateRange(period);
 
   try {
-    const performance = await db.$queryRaw<any[]>`
+    interface PerformanceMetric {
+      date: string;
+      latency_p50: number;
+      latency_p95: number;
+      latency_p99: number;
+      throughput_events: number;
+      max_latency: number;
+    }
+    const performance = await db.$queryRaw<PerformanceMetric[]>`
       SELECT
         DATE(created_at) as date,
         PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY latency_ms) as latency_p50,
@@ -395,7 +408,7 @@ async function getPerformance(request: FastifyRequest, reply: FastifyReply) {
  */
 async function exportData(request: FastifyRequest, reply: FastifyReply) {
   const tenantId = request.user.tenant_id;
-  const format = (request.params as any).format as 'csv' | 'json';
+  const format = (request.params as { format: string }).format as 'csv' | 'json';
   const period = (request.query.period as string) || '30d';
 
   if (!['csv', 'json'].includes(format)) {
@@ -460,37 +473,37 @@ async function exportData(request: FastifyRequest, reply: FastifyReply) {
 export async function register(app: FastifyInstance) {
   // All routes require authentication (fastify-jwt plugin)
 
-  app.get<{ Querystring: any }>(
+  app.get<{ Querystring: Record<string, unknown> }>(
     '/api/v1/analytics/metrics',
     { onRequest: [app.authenticate] },
     getMetrics
   );
 
-  app.get<{ Querystring: any }>(
+  app.get<{ Querystring: Record<string, unknown> }>(
     '/api/v1/analytics/events',
     { onRequest: [app.authenticate] },
     getEvents
   );
 
-  app.get<{ Querystring: any }>(
+  app.get<{ Querystring: Record<string, unknown> }>(
     '/api/v1/analytics/dispatch-attempts',
     { onRequest: [app.authenticate] },
     getDispatchAttempts
   );
 
-  app.get<{ Querystring: any }>(
+  app.get<{ Querystring: Record<string, unknown> }>(
     '/api/v1/analytics/match-rate',
     { onRequest: [app.authenticate] },
     getMatchRate
   );
 
-  app.get<{ Querystring: any }>(
+  app.get<{ Querystring: Record<string, unknown> }>(
     '/api/v1/analytics/performance',
     { onRequest: [app.authenticate] },
     getPerformance
   );
 
-  app.get<{ Params: { format: string }; Querystring: any }>(
+  app.get<{ Params: { format: string }; Querystring: Record<string, unknown> }>(
     '/api/v1/analytics/export/:format',
     { onRequest: [app.authenticate] },
     exportData
