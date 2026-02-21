@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { prisma } from './db';
 import type { NormalizedWebhookEvent } from './webhooks/webhook-router';
-import type { GatewayType } from '@prisma/client';
+import type { $Enums } from '.prisma/client';
 
 /**
  * Match Engine for Story 008
@@ -33,10 +33,9 @@ export interface ConversionOutput {
   capiPayloadEnqueued: boolean;
 }
 
-/**
- * MatchStrategy enum from schema
- */
-type MatchStrategy = 'fbc' | 'fbp' | 'email' | 'unmatched';
+// Type aliases for Prisma enums
+type MatchStrategy = $Enums.MatchStrategy;
+type GatewayType = $Enums.GatewayType;
 
 /**
  * Hash PII field with SHA-256
