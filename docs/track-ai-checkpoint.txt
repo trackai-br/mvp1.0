@@ -1,0 +1,3 @@
+Checkpoint salvo: story-002 Secrets+Gateway concluído, migrations aplicadas (host direto), tutorial API Gateway/WAF em docs/stories/story-track-ai-002-secrets-gateway.md.
+Consta atualização de infra/secrets/.env.local e .env com DB_URL final e todas as chaves necessárias.
+Próximo passo quando disser “Voltar para onde paramos”: revisar doc de gateway/WAF e documentar implantação (Terraform/Secrets Manager) antes de avançar para story 003.

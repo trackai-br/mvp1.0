@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { setupSessionCreateSchema, type SetupSessionStatus } from '@hub/shared';
+import { setupSessionCreateSchema, type SetupSessionStatus } from '@/lib/contracts';
 import type { CSSProperties } from 'react';
 import type { z } from 'zod';
 

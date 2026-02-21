@@ -45,3 +45,64 @@ export const setupSessionStatusSchema = z.object({
 });
 
 export type SetupSessionStatus = z.infer<typeof setupSessionStatusSchema>;
+
+export const perfectPayWebhookSchema = z.object({
+  order_id: z.string().min(1),
+  customer: z.object({
+    email: z.string().optional(),
+    phone: z.string().optional(),
+  }).optional(),
+  amount: z.number().optional(),
+  currency: z.string().optional(),
+  status: z.string().optional(),
+  event_time: z.string().optional(),
+  product_id: z.string().optional(),
+});
+
+export type PerfectPayWebhookBody = z.infer<typeof perfectPayWebhookSchema>;
+
+export const clickIngestSchema = z.object({
+  fbclid: z.string().optional(),
+  fbc: z.string().optional(),
+  fbp: z.string().optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+});
+
+export type ClickIngestInput = z.infer<typeof clickIngestSchema>;
+
+export const pageviewIngestSchema = z.object({
+  url: z.string().url(),
+  referrer: z.string().url().optional(),
+  title: z.string().optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+  utmContent: z.string().optional(),
+  utmTerm: z.string().optional(),
+  fbclid: z.string().optional(),
+  fbc: z.string().optional(),
+  fbp: z.string().optional(),
+});
+
+export type PageviewIngestInput = z.infer<typeof pageviewIngestSchema>;
+
+export const checkoutIngestSchema = z.object({
+  cartValue: z.number().positive().optional(),
+  currency: z.string().length(3).default('BRL'),
+  cartItems: z.array(z.object({
+    productId: z.string(),
+    productName: z.string(),
+    quantity: z.number().positive(),
+    unitPrice: z.number().positive(),
+  })).optional(),
+  utmSource: z.string().optional(),
+  utmMedium: z.string().optional(),
+  utmCampaign: z.string().optional(),
+  fbclid: z.string().optional(),
+  fbc: z.string().optional(),
+  fbp: z.string().optional(),
+});
+
+export type CheckoutIngestInput = z.infer<typeof checkoutIngestSchema>;

@@ -8,13 +8,17 @@
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
     "@fastify/env": "^5.0.3",
     "@fastify/sensible": "^6.0.4",
+    "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1",
+    "pg": "^8.13.0",
     "bullmq": "^5.69.3",
     "dotenv": "^17.3.1",
     "fastify": "^5.7.4",
@@ -30,6 +34,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/node": "^25.3.0",
+    "@types/pg": "^8.11.0",
     "@typescript-eslint/eslint-plugin": "^8.56.0",
     "@typescript-eslint/parser": "^8.56.0",
     "eslint": "^9.39.2",

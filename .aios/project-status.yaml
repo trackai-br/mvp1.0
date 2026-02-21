@@ -1,11 +1,18 @@
 status:
-  branch: null
-  modifiedFiles: []
-  recentCommits: []
+  branch: main
+  modifiedFiles:
+    - .gitignore
+    - apps/api/package.json
+    - apps/web/.next/dev/cache/turbopack/23c464985/CURRENT
+    - apps/web/.next/dev/cache/turbopack/23c464985/LOG
+    - apps/web/.next/dev/server/app/page_client-reference-manifest.js
+  modifiedFilesTotalCount: 27
+  recentCommits:
+    - 'feat: bootstrap Track AI MVP onboarding flow'
   currentEpic: null
   currentStory: null
-  lastUpdate: '2026-02-19T21:16:24.114Z'
-  isGitRepo: false
-timestamp: 1771535784126
+  lastUpdate: '2026-02-21T01:26:37.225Z'
+  isGitRepo: true
+timestamp: 1771637197232
 ttl: 60
-gitFingerprint: null
+gitFingerprint: 1771545150409.923:1771545155699.7434

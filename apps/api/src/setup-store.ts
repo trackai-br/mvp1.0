@@ -1,45 +1,75 @@
 import type { SetupSessionCreateInput, SetupSessionStatus } from '@hub/shared';
 import { buildWebhookData } from './webhook-utils';
-
-const sessions = new Map<string, SetupSessionStatus>();
+import { prisma } from './db';
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, '');
 }
 
-export function createSetupSession(input: SetupSessionCreateInput): SetupSessionStatus {
-  const now = new Date().toISOString();
+function toSessionStatus(row: {
+  id: string;
+  projectName: string;
+  state: string;
+  webhookToken: string;
+  createdAt: Date;
+  updatedAt: Date;
+  input: unknown;
+  issues: unknown;
+  checks: unknown;
+}): SetupSessionStatus {
+  return {
+    id: row.id,
+    projectName: row.projectName,
+    state: row.state as SetupSessionStatus['state'],
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+    input: row.input as SetupSessionCreateInput,
+    webhook: buildWebhookData({ sessionId: row.id, token: row.webhookToken }),
+    issues: (row.issues as string[]) ?? [],
+    checks: (row.checks as SetupSessionStatus['checks']) ?? {
+      gatewayCredentials: 'pending',
+      metaToken: 'pending',
+      landingProbe: 'pending',
+    },
+  };
+}
+
+export async function createSetupSession(input: SetupSessionCreateInput): Promise<SetupSessionStatus> {
   const id = crypto.randomUUID();
   const webhookToken = generateToken();
 
-  const session: SetupSessionStatus = {
-    id,
-    projectName: input.projectName,
-    state: 'created',
-    createdAt: now,
-    updatedAt: now,
-    input,
-    webhook: buildWebhookData({
-      sessionId: id,
-      token: webhookToken
-    }),
-    checks: {
-      gatewayCredentials: 'pending',
-      metaToken: 'pending',
-      landingProbe: 'pending'
+  const row = await prisma.setupSession.create({
+    data: {
+      id,
+      projectName: input.projectName,
+      state: 'created',
+      webhookToken,
+      input: input as object,
+      issues: [],
+      checks: {
+        gatewayCredentials: 'pending',
+        metaToken: 'pending',
+        landingProbe: 'pending',
+      },
     },
-    issues: []
-  };
+  });
 
-  sessions.set(session.id, session);
-  return session;
+  return toSessionStatus(row);
 }
 
-export function getSetupSession(id: string): SetupSessionStatus | null {
-  return sessions.get(id) ?? null;
+export async function getSetupSession(id: string): Promise<SetupSessionStatus | null> {
+  const row = await prisma.setupSession.findUnique({ where: { id } });
+  if (!row) return null;
+  return toSessionStatus(row);
 }
 
-export function saveSetupSession(session: SetupSessionStatus): void {
-  session.updatedAt = new Date().toISOString();
-  sessions.set(session.id, session);
+export async function saveSetupSession(session: SetupSessionStatus): Promise<void> {
+  await prisma.setupSession.update({
+    where: { id: session.id },
+    data: {
+      state: session.state,
+      issues: session.issues,
+      checks: session.checks as object,
+    },
+  });
 }

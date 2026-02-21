@@ -1,4 +1,4 @@
-import type { SetupSessionStatus } from '@hub/shared';
+import type { SetupSessionStatus } from '@/lib/contracts';
 
 const GRAPH_BASE = process.env.META_GRAPH_API_BASE ?? 'https://graph.facebook.com/v21.0';
 const PERFECTPAY_BASE = process.env.PERFECTPAY_API_BASE ?? 'https://app.perfectpay.com.br';

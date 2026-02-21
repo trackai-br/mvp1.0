@@ -16,6 +16,9 @@ dist/
 build/
 *.log
 logs/
+apps/web/.next/
+infra/secrets/
+
 
 # IDE & OS (AIOS)
 .DS_Store

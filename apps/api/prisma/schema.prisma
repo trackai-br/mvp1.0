@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenantStatus {
+  provisioning
+  active
+  suspended
+  retired
+}
+
+enum DispatchStatus {
+  pending
+  success
+  failed
+}
+
+model Tenant {
+  id              String            @id @default(cuid())
+  slug            String            @unique
+  name            String
+  status          TenantStatus      @default(provisioning)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  funnels         Funnel[]
+  clicks          Click[]
+  pageviews       Pageview[]
+  checkouts       Checkout[]
+  identities      Identity[]
+  dedupeRegistry  DedupeRegistry[]
+  dispatchAttempts DispatchAttempt[]
+  sessions        SetupSession[]
+}
+
+model Funnel {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  status    String   @default("draft")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model Click {
+  id        String   @id @default(cuid())
+  tenantId  String
+  fbclid    String?
+  fbc       String?
+  fbp       String?
+  utmSource String?
+  utmMedium String?
+  utmCampaign String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, fbc])
+  @@index([tenantId, fbclid])
+}
+
+model Identity {
+  id        String   @id @default(cuid())
+  tenantId  String
+  emailHash String?
+  phoneHash String?
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, emailHash])
+  @@index([tenantId, phoneHash])
+}
+
+model DedupeRegistry {
+  id        String   @id @default(cuid())
+  tenantId  String
+  eventId   String
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, eventId])
+}
+
+model DispatchAttempt {
+  id        String        @id @default(cuid())
+  tenantId  String
+  eventId   String
+  attempt   Int
+  status    DispatchStatus
+  error     String?
+  createdAt DateTime      @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, eventId])
+}
+
+model SetupSession {
+  id          String   @id
+  tenantId    String?
+  projectName String
+  state       String
+  webhookToken String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  issues      Json?
+  input       Json?
+  checks      Json?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Pageview {
+  id          String   @id @default(cuid())
+  tenantId    String
+  url         String
+  referrer    String?
+  title       String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  fbclid      String?
+  fbc         String?
+  fbp         String?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model Checkout {
+  id          String   @id @default(cuid())
+  tenantId    String
+  cartValue   Float?
+  currency    String   @default("BRL")
+  cartItems   Json?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  fbclid      String?
+  fbc         String?
+  fbp         String?
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
