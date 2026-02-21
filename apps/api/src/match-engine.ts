@@ -54,6 +54,7 @@ const MATCH_WINDOW_MS = 72 * 60 * 60 * 1000;
  */
 export async function matchConversion(input: ConversionInput): Promise<ConversionOutput> {
   const { tenantId, gateway, webhookRawId, event } = input;
+  const startTime = performance.now(); // Measure processing time
 
   if (!event.eventId) {
     throw new Error('ConversionEvent eventId is required');
@@ -144,6 +145,8 @@ export async function matchConversion(input: ConversionInput): Promise<Conversio
   });
 
   // STEP 5: Create MatchLog audit record with detailed strategy tracking
+  const processingTimeMs = Math.round(performance.now() - startTime);
+
   const matchLog = await prisma.matchLog.create({
     data: {
       conversionId: createdConversion.id,
@@ -170,7 +173,7 @@ export async function matchConversion(input: ConversionInput): Promise<Conversio
       // Time window for this conversion
       timeWindowStart: windowStart,
       timeWindowEnd: now,
-      processingTimeMs: 0, // TODO: Measure actual processing time
+      processingTimeMs,
     },
   });
 
@@ -211,11 +214,24 @@ export async function getMatchStats(
 }> {
   const startDate = since || new Date(Date.now() - 24 * 60 * 60 * 1000); // Last 24h default
 
+  // Get conversions for this tenant first
+  const conversions = await prisma.conversion.findMany({
+    where: {
+      tenantId,
+      createdAt: {
+        gte: startDate,
+      },
+    },
+    select: { id: true },
+  });
+
+  const conversionIds = conversions.map((c) => c.id);
+
   const stats = await prisma.matchLog.groupBy({
     by: ['finalStrategy'],
     where: {
-      createdAt: {
-        gte: startDate,
+      conversionId: {
+        in: conversionIds,
       },
     },
     _count: true,
