@@ -12,12 +12,14 @@
 - Code lint-clean, typecheck passing
 - All checkboxes marked complete
 
-**Phase 2 Status - BLOCKED ⚠️** (2026-02-21)
-- @devops prepared infrastructure setup scripts
-- IAM permission blocker identified: `hub-tracking-deploy` user lacks SQS/Secrets Manager permissions
-- AWS Admin action required: Attach IAM policy to user
-- See `infra/IAM-POLICY-REQUIRED.md` for resolution
-- Infrastructure setup script ready at `infra/setup-sqs.sh` (awaiting IAM fix)
+**Phase 2 Status - COMPLETE ✅** (2026-02-21)
+- @devops resolved IAM permission blocker
+- Created SQS primary queue: `capi-dispatch`
+- Created SQS dead letter queue: `capi-dispatch-dlq`
+- Configured RedrivePolicy (maxReceiveCount=5)
+- Created Secrets Manager secret: `meta-capi-credentials`
+- Updated `.env.local` with queue URLs and secret name
+- Ready for Phase 3: @dev implements SQS Worker
 
 ## Contexto
 
@@ -57,10 +59,15 @@ Esta story implementa:
 - [x] Implementar circuit breaker (detecta 5+ falhas, pausa 60s)
 - [x] Testes unitários (retry logic, circuit breaker, dedup)
 
-**Phase 2 - AWS Infrastructure & Worker (PENDING):**
-- [ ] Criar AWS SQS filas: `capi-dispatch` + `capi-dispatch-dlq`
-- [ ] Criar `DispatchAttempt` log (status, error, response) — *nota: schema já existe desde Story 008*
-- [ ] Implementar worker em Node.js async (Bull queue ou SQS consumer)
+**Phase 2 - AWS Infrastructure (COMPLETE):**
+- [x] Criar AWS SQS filas: `capi-dispatch` + `capi-dispatch-dlq`
+- [x] Criar AWS Secrets Manager secret para Meta CAPI credentials
+- [x] Atualizar .env.local com queue URLs
+
+**Phase 2b - SQS Worker Implementation (PENDING):**
+- [ ] Implementar worker em Node.js async (SQS consumer)
+- [ ] Integrar MetaCapiClient + CircuitBreaker na loop do worker
+- [ ] Implementar DispatchAttempt logging (schema já existe desde Story 008)
 - [ ] Integrar com CloudWatch para métricas/alarmes
 
 **Phase 3 - Testing & Deployment (PENDING):**
@@ -154,13 +161,15 @@ Conversion in PostgreSQL
 ## Change Log
 
 - 2026-02-21: Story created by @sm, validated by @po (score 9/10)
-- 2026-02-21: Phase 1 implementation complete by @dev
+- 2026-02-21: **Phase 1 COMPLETE** by @dev
   - Created MetaCapiClient service with exponential backoff retry logic (max 5 attempts)
   - Created CircuitBreaker utility with CLOSED/OPEN/HALF_OPEN state machine
   - Added comprehensive unit tests (17 new tests, 60 total passing)
-  - Fixed lint errors (unused variables in catch blocks)
-  - Fixed TypeScript type incompatibilities (Prisma null/undefined handling)
-  - All tests passing: `npm test` ✅
-  - Lint clean: `npm run lint` ✅
-  - TypeScript: `npm run typecheck` ✅
-  - Status: Ready for Phase 2 (AWS SQS infrastructure setup by @devops)
+  - All tests passing: `npm test` ✅, Lint clean: `npm run lint` ✅, TypeScript: `npm run typecheck` ✅
+- 2026-02-21: **Phase 2 COMPLETE** by @devops
+  - Resolved IAM permissions: Attached SQS-SecretsManager-Policy to hub-tracking-deploy user
+  - Created SQS primary queue: capi-dispatch (30s visibility timeout, 14-day retention)
+  - Created SQS DLQ: capi-dispatch-dlq (RedrivePolicy with maxReceiveCount=5)
+  - Created Secrets Manager secret: meta-capi-credentials (placeholder values)
+  - Updated .env.local with SQS_QUEUE_URL, SQS_DLQ_URL, META_CAPI_SECRET_NAME
+  - Status: AWS infrastructure ready for Phase 3 (SQS Worker implementation by @dev)
