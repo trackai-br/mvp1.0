@@ -1,6 +1,6 @@
 # Story Track AI 006 – Endpoints de Pageview e Initiate Checkout
 
-## Status: Draft
+## Status: InProgress
 
 ## Contexto
 Com o endpoint de ingestão de click funcionando (Story 004), o próximo passo é capturar os dois outros eventos principais do funnel: **pageview** (quando usuário chega na landing) e **initiate_checkout** (quando começa o processo de compra). Estes eventos fornecem contexto temporal do user journey e são críticos para matching com conversões posteriores.
@@ -18,20 +18,20 @@ Com o endpoint de ingestão de click funcionando (Story 004), o próximo passo �
 6. Retornar 201 com ID do evento criado
 
 ## Tasks
-- [ ] Criar schemas Zod para `pageviewIngestSchema` e `checkoutIngestSchema` em `@hub/shared`
-- [ ] Criar `apps/api/src/pageview-handler.ts` com lógica de persistência
-- [ ] Criar `apps/api/src/checkout-handler.ts` com lógica de persistência
-- [ ] Registrar rotas `POST /api/v1/track/pageview` e `POST /api/v1/track/initiate_checkout` no server.ts
-- [ ] Adicionar testes unitários para ambos handlers
+- [x] Criar schemas Zod para `pageviewIngestSchema` e `checkoutIngestSchema` em `@hub/shared`
+- [x] Criar `apps/api/src/pageview-handler.ts` com lógica de persistência
+- [x] Criar `apps/api/src/checkout-handler.ts` com lógica de persistência
+- [x] Registrar rotas `POST /api/v1/track/pageview` e `POST /api/v1/track/initiate_checkout` no server.ts
+- [x] Adicionar testes unitários para ambos handlers
 - [ ] Build e deploy no ECS
 
 ## Critérios de aceite
-- [ ] `POST /api/v1/track/pageview` com header `x-tenant-id` válido retorna 201 com `{ id }`
-- [ ] Pageview persiste com tenantId, url, referrer, utm_source, utm_medium, utm_campaign, utm_content, utm_term, ip, userAgent, timestamp
-- [ ] `POST /api/v1/track/initiate_checkout` retorna 201 com dados do checkout persistidos
-- [ ] Sem `x-tenant-id`: retorna 400
-- [ ] Tenant inexistente: retorna 404
-- [ ] Campos opcionais ausentes: evento criado sem eles (não retorna erro)
+- [x] `POST /api/v1/track/pageview` com header `x-tenant-id` válido retorna 201 com `{ id }`
+- [x] Pageview persiste com tenantId, url, referrer, utm_source, utm_medium, utm_campaign, utm_content, utm_term, ip, userAgent, timestamp
+- [x] `POST /api/v1/track/initiate_checkout` retorna 201 com dados do checkout persistidos
+- [x] Sem `x-tenant-id`: retorna 400
+- [x] Tenant inexistente: retorna 404
+- [x] Campos opcionais ausentes: evento criado sem eles (não retorna erro)
 
 ## Pontos de atenção
 - ⚠️ Timestamps devem ser capturados no servidor (confiável), não do cliente (pode ser falsificado)
@@ -53,3 +53,4 @@ Com o endpoint de ingestão de click funcionando (Story 004), o próximo passo �
 
 ## Change Log
 - Story criada por @sm (River) — 2026-02-21. Bloqueada aguardando deploy de Story 005.
+- Story implementada por @dev (Dex) — 2026-02-21. Endpoints `/api/v1/track/pageview` e `/api/v1/track/initiate_checkout` implementados com DI pattern. 24 testes passando (lint OK, typecheck OK). Pronto para validação por @po.
