@@ -166,3 +166,86 @@ model Checkout {
 
   @@index([tenantId])
 }
+
+enum MatchStrategy {
+  fbc
+  fbp
+  email
+  unmatched
+}
+
+model Conversion {
+  id              String        @id @default(cuid())
+  tenantId        String        @db.Uuid
+
+  // Webhook metadata
+  gateway         String        // "hotmart" | "kiwify" | "stripe" | "pagseguro"
+  gatewayEventId  String        // Unique per gateway per tenant for dedup
+
+  // Purchase details
+  amount          Float?
+  currency        String        @default("BRL")
+
+  // Matching identifiers
+  fbc             String?       // Facebook Container ID
+  fbp             String?       // Facebook Pixel ID
+  customerEmailHash String?     // SHA-256 (LGPD)
+  customerPhone   String?       // Optional
+
+  // Match result
+  matchedClickId  String?       @db.Uuid  // FK to Click (NULL = unmatched)
+  matchStrategy   MatchStrategy?           // Strategy used (fbc|fbp|email|unmatched)
+
+  // CAPI dispatch (Story 009)
+  sentToCAPI      Boolean       @default(false)
+  capiResponse    Json?
+
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  tenant       Tenant @relation(fields: [tenantId], references: [id])
+  matchedClick Click? @relation(fields: [matchedClickId], references: [id], onDelete: SetNull)
+
+  // Indexes for matching queries
+  @@unique([tenantId, gateway, gatewayEventId])  // Dedup enforcement
+  @@index([tenantId, fbc, createdAt(sort: Desc)])            // FBC matching
+  @@index([tenantId, fbp, createdAt(sort: Desc)])            // FBP matching
+  @@index([tenantId, customerEmailHash, createdAt(sort: Desc)])  // Email matching
+  @@index([tenantId, sentToCAPI, createdAt])    // Replay queries
+  @@index([tenantId, matchStrategy, createdAt]) // Analytics: match rate per strategy
+}
+
+model MatchLog {
+  id              String        @id @default(cuid())
+  conversionId    String
+
+  // Strategies attempted (in order)
+  fbcAttempted    Boolean       @default(false)
+  fbcResult       String?       // "found" | "not_found" | "expired"
+  fbcClickId      String?       @db.Uuid
+
+  fbpAttempted    Boolean       @default(false)
+  fbpResult       String?       // "found" | "not_found"
+  fbpClickId      String?       @db.Uuid
+
+  emailAttempted  Boolean       @default(false)
+  emailResult     String?       // "found" | "not_found"
+  emailClickId    String?       @db.Uuid
+
+  // Final result
+  finalStrategy   MatchStrategy?
+  finalClickId    String?       @db.Uuid
+
+  // Debug metrics
+  timeWindowStart DateTime      // NOW() - 72h
+  timeWindowEnd   DateTime      // NOW()
+  processingTimeMs Int          // Query latency in ms
+
+  createdAt       DateTime      @default(now())
+
+  @@index([conversionId])
+  @@index([createdAt(sort: Desc)])  // For analytics
+  @@index([finalStrategy, createdAt]) // Track match rate by strategy
+}
