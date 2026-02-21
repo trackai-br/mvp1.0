@@ -118,7 +118,7 @@ GET  /api/v1/setup/sessions/:id/status → Verifica o progresso
 
 ## 4. Story 002 — Secrets e API Gateway
 
-**Status:** 🔄 Em andamento
+**Status:** ✅ Concluída (2026-02-21)
 
 ### O que são "secrets"?
 
@@ -212,7 +212,285 @@ aws sts get-caller-identity
 
 ---
 
-## 5. Conceitos Fundamentais
+## 5. Story 003 — Deploy em ECS Fargate + Observabilidade
+
+**Status:** ✅ Concluída
+
+### O que foi feito?
+
+Deployar a aplicação em um servidor real (nuvem AWS) para que clientes possam acessá-la. Também configurar logs e monitoramento.
+
+**O que é ECS Fargate?**
+
+> É como alugar um quarto em um hotel em vez de comprar uma casa. Você não se preocupa com a infraestrutura (eletricidade, Wi-Fi, segurança) — o hotel cuida. Você só paga pelo quarto enquanto usa. No AWS, Fargate cuida dos servidores enquanto você coda.
+
+**O que foi configurado:**
+- Container Docker da aplicação
+- Auto-scaling (aumenta/diminui recursos conforme a demanda)
+- CloudWatch (logs + alertas)
+- Health checks automáticos
+
+---
+
+## 6. Story 004 — Click Ingestion
+
+**Status:** ✅ Concluída (2026-02-21)
+
+### O que foi feito?
+
+Criar o endpoint `POST /api/v1/track/click` que recebe **cliques em anúncios** e salva no banco de dados.
+
+**Rota:** `POST /api/v1/track/click`
+
+**Dados capturados:**
+- `fbclid` — Facebook Click ID (identificador único do clique)
+- `fbc` — Facebook Container ID
+- `fbp` — Facebook Pixel ID
+- `utmSource`, `utmMedium`, `utmCampaign` — parâmetros UTM (para rastrear qual anúncio)
+- `ip` — IP do usuário (país, cidade)
+- `userAgent` — navegador e dispositivo
+
+**Exemplo de requisição:**
+```bash
+curl -X POST http://localhost:3001/api/v1/track/click \
+  -H "x-tenant-id: meu-cliente-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fbclid": "IwAR1234567890abcdefghijk",
+    "utmSource": "instagram",
+    "utmMedium": "paid",
+    "utmCampaign": "verao-2026"
+  }'
+```
+
+**Resposta (sucesso):**
+```json
+{
+  "ok": true,
+  "id": "click-uuid-12345"
+}
+```
+
+**Validação:** O schema Zod `clickIngestSchema` garante que os dados fazem sentido antes de salvar.
+
+**Testes:** 7 testes cobrindo casos normais, erros, e campos opcionais.
+
+**QA Status:** ✅ PASS (7/7 checks) — pronto para produção.
+
+**Fonte:** [Meta Conversions API — Click Events](https://developers.facebook.com/docs/marketing-api/conversions-api/parameters)
+
+---
+
+## 7. Story 005 — PerfectPay Webhook HMAC-SHA256
+
+**Status:** ✅ Concluída (2026-02-21)
+
+### O que foi feito?
+
+Receber notificações (webhooks) do gateway de pagamento **PerfectPay** quando uma compra é aprovada.
+
+**Rota:** `POST /api/v1/webhooks/perfectpay/:tenantId`
+
+**Por que é importante?**
+
+> Quando alguém compra no PerfectPay, precisamos ser avisados para conectar "essa compra vem do anúncio X". PerfectPay envia essa notificação via webhook — é como um SMS dizendo "compra aprovada! aqui os detalhes".
+
+**Dados recebidos:**
+- Identificador da compra (`eventId`)
+- Dados do comprador (email, telefone — **hasheados para privacidade**)
+- Valor da compra
+- Data/hora
+
+**Segurança — HMAC-SHA256:**
+
+```
+PerfectPay tem uma senha secreta: "my-webhook-secret"
+
+Quando envia o webhook, ela calcula:
+  HMAC = SHA256(secret, dados do evento)
+
+Ela envia: dados + assinatura HMAC
+
+Nossa verificação:
+  1. Recebemos dados + assinatura
+  2. Calculamos nosso HMAC com NOSSA senha (igual ao de PerfectPay)
+  3. Comparamos de forma "timing-safe" (protege contra timing attacks)
+  4. Se bater → é legítimo! ✅
+  5. Se não bater → falsificação! ❌
+```
+
+**Por que "timing-safe"?**
+
+> Um atacante pode medir quanto tempo levou a comparação e deduzir qual caractere está certo. Timing-safe compara sempre no mesmo tempo, independente.
+
+**Validação:** Zod schema `perfectPayWebhookSchema`
+
+**Testes:** 15 testes cobrindo webhook válido, inválido, deduplicação, etc.
+
+**Bug corrigido em 2026-02-21:**
+- **Antes:** comparação simples `===` (timing attack vulnerability)
+- **Depois:** `crypto.timingSafeEqual()` (seguro contra timing attacks)
+
+**QA Status:** ✅ PASS — pronto para deploy.
+
+**Fontes:**
+- [HMAC Explicado — Wikipedia](https://en.wikipedia.org/wiki/HMAC)
+- [Timing Attacks — OWASP](https://owasp.org/www-community/attacks/Timing_attack)
+- [Crypto Module Node.js](https://nodejs.org/api/crypto.html#crypto_crypto_timingsafeequal_a_b)
+
+---
+
+## 8. Story 006 — Pageview & Checkout Endpoints
+
+**Status:** 🔄 Em validação (2026-02-21)
+
+### O que foi feito?
+
+Criar dois novos endpoints para rastrear a jornada do usuário:
+1. `POST /api/v1/track/pageview` — quando usuário chega na página
+2. `POST /api/v1/track/initiate_checkout` — quando clica em "Comprar"
+
+**Por quê são importantes?**
+
+```
+Jornada do usuário:
+  1. Vê anúncio no Instagram
+  2. Clica (Story 004 — Click) ← Já rastreamos
+  3. Chega na landing page (Story 006 — Pageview) ← NOVO
+  4. Scrolleia, lê, se interessa
+  5. Clica em "Comprar" (Story 006 — Checkout) ← NOVO
+  6. Paga (Story 005 — PerfectPay webhook) ← Já rastreamos
+```
+
+Cada etapa nos dá contexto: quanto tempo entre clique e compra? Quantos visitam a página mas não compram?
+
+### Endpoint 1: Pageview
+
+**Rota:** `POST /api/v1/track/pageview`
+
+**Dados capturados:**
+- `url` — URL da página (obrigatório)
+- `referrer` — de onde veio (Ex: Google, Direct, outro site)
+- `title` — título da página
+- `utmSource`, `utmMedium`, `utmCampaign`, `utmContent`, `utmTerm` — parâmetros UTM
+- `fbclid`, `fbc`, `fbp` — Facebook IDs
+- `ip` — IP (automático do servidor)
+- `userAgent` — navegador (automático)
+
+**Exemplo:**
+```bash
+curl -X POST http://localhost:3001/api/v1/track/pageview \
+  -H "x-tenant-id: meu-cliente-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://exemplo.com/landing-verao",
+    "title": "Promoção de Verão 2026",
+    "referrer": "https://instagram.com",
+    "utmSource": "instagram",
+    "utmMedium": "organic"
+  }'
+```
+
+**Resposta:**
+```json
+{
+  "ok": true,
+  "id": "pageview-uuid-54321"
+}
+```
+
+### Endpoint 2: Checkout (Initiate)
+
+**Rota:** `POST /api/v1/track/initiate_checkout`
+
+**Dados capturados:**
+- `cartValue` — valor do carrinho em reais (opcional)
+- `currency` — moeda (padrão: BRL)
+- `cartItems` — array com detalhes dos itens:
+  ```json
+  [
+    {
+      "productId": "shoe-001",
+      "productName": "Sapato Azul",
+      "quantity": 1,
+      "unitPrice": 299.99
+    }
+  ]
+  ```
+- `utmSource`, `utmMedium`, `utmCampaign` — parâmetros UTM
+- `fbclid`, `fbc`, `fbp` — Facebook IDs
+- `ip` — IP (automático)
+- `userAgent` — navegador (automático)
+
+**Exemplo:**
+```bash
+curl -X POST http://localhost:3001/api/v1/track/initiate_checkout \
+  -H "x-tenant-id: meu-cliente-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cartValue": 299.99,
+    "currency": "BRL",
+    "cartItems": [
+      {
+        "productId": "shoe-001",
+        "productName": "Sapato Azul",
+        "quantity": 1,
+        "unitPrice": 299.99
+      }
+    ],
+    "utmSource": "instagram"
+  }'
+```
+
+**Resposta:**
+```json
+{
+  "ok": true,
+  "id": "checkout-uuid-99999"
+}
+```
+
+### Padrão Técnico: Dependency Injection
+
+Os handlers (`pageview-handler.ts`, `checkout-handler.ts`) não importam Prisma diretamente. Em vez disso, recebem funções como argumentos:
+
+```typescript
+async function handlePageviewIngest(
+  tenantId: string,
+  body: any,
+  ip: string | undefined,
+  userAgent: string | undefined,
+  deps: {
+    findTenant?: (id) => Promise<Tenant | null>,
+    createPageview?: (data) => Promise<{ id: string }>
+  } = {}
+)
+```
+
+**Por quê?** Facilita testes. Você pode "mockar" as funções sem tocar no banco real.
+
+### Testes
+
+- **Pageview:** 4 testes
+  - Tenant válido + payload válido → 201 OK ✅
+  - Tenant inválido → 404 ❌
+  - Todos os campos opcionais → salva sem erro ✅
+  - Campos mínimos → salva com `url` apenas ✅
+
+- **Checkout:** 5 testes
+  - Tenant válido + payload válido → 201 OK ✅
+  - Tenant inválido → 404 ❌
+  - Todos os campos (incluindo carrinho) → salva com itens ✅
+  - Campos mínimos → salva com `currency` apenas ✅
+  - Campo `currency` respeitado → USD salvo como USD ✅
+
+**Total:** 9 testes, todos passando ✅
+
+**QA Status:** 🔄 Awaiting @po validation (implementação concluída, pronto para validação de story).
+
+---
+
+## 9. Conceitos Fundamentais
 
 ### O que é um Webhook?
 
@@ -250,6 +528,42 @@ No código, `tenant_id` é o número do apartamento. Toda vez que um dado é sal
   Match Engine processa um por vez, sem travar
 ```
 
+### O que é Dependency Injection?
+
+> É como pedir comida no restaurante. Em vez de você ir para a cozinha e cozinhar (o código cuida), você pede ao garçom e ele traz. O garçom é a "injeção de dependência" — traz o que você precisa.
+
+No código:
+```typescript
+// ❌ SEM injeção: função cuida de tudo
+async function processCheckout() {
+  const db = new Database(); // cria o banco aqui
+  const user = db.getUser(); // usa o banco
+}
+
+// ✅ COM injeção: você recebe o que precisa
+async function processCheckout(deps: { database }) {
+  const user = deps.database.getUser(); // usa o banco recebido
+}
+```
+
+**Benefícios:** Testes fica fácil — você "injeta" um banco fake em vez do real.
+
+---
+
+## Próximas Stories (Backlog)
+
+### 📋 Story 007 — Generic Webhook Receiver
+**O quê:** Receber webhooks de vários gateways (Hotmart, Kiwify, Stripe, PagSeguro).
+
+### 📋 Story 008 — Match Engine
+**O quê:** Conectar "quem comprou" com "qual anúncio viu antes de comprar".
+
+### 📋 Story 009 — SQS Dispatch
+**O quê:** Enviar eventos para Meta CAPI via fila AWS SQS (mais confiável que direct POST).
+
+### 📋 Story 010 — Dashboard
+**O quê:** Painel web para ver estatísticas (cliques, conversões, ROI).
+
 ---
 
 ## Glossário
@@ -282,7 +596,35 @@ No código, `tenant_id` é o número do apartamento. Toda vez que um dado é sal
 | **TypeScript** | JavaScript com tipagem — ajuda a evitar bugs antes do código rodar. |
 | **WAF** | Web Application Firewall — sistema que filtra tráfego malicioso. |
 | **Webhook** | Notificação automática enviada de um sistema para outro quando algo acontece. |
+| **Timing-Safe Comparison** | Comparação de strings que leva o mesmo tempo independente do resultado (protege contra timing attacks). |
+| **Dependency Injection (DI)** | Padrão onde funções recebem dependências como argumentos em vez de criá-las dentro. |
+| **Hash** | Resumo criptográfico de dados que não pode ser revertido. Ex: email → a1b2c3d4... |
+| **LGPD** | Lei Geral de Proteção de Dados — lei brasileira de privacidade. Requer consent e cuidado com dados pessoais. |
 
 ---
 
-*Guia mantido automaticamente. Última atualização: Story 002 em andamento.*
+## Como Contribuir
+
+Se está trabalhando em uma nova story:
+1. Complete a implementação e testes
+2. Atualize a seção correspondente neste guia
+3. Adicione exemplos `curl`
+4. Adicione "Fontes" com links para docs oficiais
+5. Commit com mensagem: `docs: update GUIDE.md for story-NNN`
+
+---
+
+## Recursos Rápidos
+
+| Necessidade | Link |
+|-------------|------|
+| Documentação Prisma | https://www.prisma.io/docs/ |
+| Documentação Fastify | https://www.fastify.io/docs/ |
+| Validação Zod | https://zod.dev/ |
+| Meta CAPI | https://developers.facebook.com/docs/marketing-api/conversions-api |
+| AWS ECS | https://docs.aws.amazon.com/ecs/ |
+| LGPD — Lei | https://www.gov.br/cidadania/pt-br/acesso-a-informacao/lgpd |
+
+---
+
+*Guia mantido pela equipe de desenvolvimento. Última atualização: 2026-02-21 (Story 006).*
