@@ -335,15 +335,24 @@ Modelos principais:
 
 ### Stories Ativas
 
-| Story | Status | Descrição |
-|-------|--------|-----------|
-| story-track-ai-001 | Done | Setup wizard + API sessions |
-| story-track-ai-002 | Done | Secrets + AWS API Gateway + WAF |
-| story-track-ai-003 | Done | Deploy ECS Fargate + observabilidade |
-| story-track-ai-004 | InProgress | Click ingestion (`POST /api/v1/track/click`) |
-| story-track-ai-005 | InReview | PerfectPay webhook HMAC-SHA256 |
+| Story | Status | Descrição | QA Status |
+|-------|--------|-----------|-----------|
+| story-track-ai-001 | Done | Setup wizard + API sessions | ✅ |
+| story-track-ai-002 | Done | Secrets + AWS API Gateway + WAF | ✅ |
+| story-track-ai-003 | Done | Deploy ECS Fargate + observabilidade | ✅ |
+| story-track-ai-004 | Done | Click ingestion (`POST /api/v1/track/click`) | ✅ PASS |
+| story-track-ai-005 | Ready for Deploy | PerfectPay webhook HMAC-SHA256 (security fix) | ✅ PASS |
+| story-track-ai-006 | InProgress | Pageview & Checkout endpoints | 🔄 Awaiting @po |
 
-Próximas (backlog): outros gateways (006), match engine (007), SQS dispatch (008), dashboard (009), replay (010).
+### Backlog (Próximas Stories)
+
+| Story | Descrição | Dependências |
+|-------|-----------|--------------|
+| story-track-ai-007 | Generic webhook receiver (Hotmart, Kiwify, Stripe, PagSeguro) | Story 006 validation |
+| story-track-ai-008 | Match engine (connect clicks → conversions) | Story 007 |
+| story-track-ai-009 | SQS dispatch to Meta CAPI | Story 008 |
+| story-track-ai-010 | Dashboard + analytics (Next.js) | Story 009 |
+| story-track-ai-011 | Replay engine (retry failed conversions) | Story 009 |
 
 ### Padrões do Projeto
 
