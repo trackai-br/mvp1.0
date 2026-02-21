@@ -229,3 +229,127 @@ npm run trace -- workflow-name
 
 ---
 *Synkra AIOS Claude Code Configuration v2.0*
+
+---
+
+<!-- PROJECT-CONTEXT-START: hub-server-side-tracking -->
+## Projeto: Hub Server-Side Tracking
+
+SaaS multi-tenant de server-side tracking para Meta Ads. Intermediário entre gateways de pagamento (PerfectPay, Hotmart, Kiwify) e Meta Conversions API (CAPI), com foco em alto match rate e deduplicação robusta.
+
+### Stack
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Backend | Node.js 18+, Fastify 5, Prisma 7 + PostgreSQL |
+| Frontend | Next.js 16, React 19, TanStack Query, React Hook Form |
+| Shared | TypeScript 5.9, Zod 4 (schemas compartilhados via `packages/shared`) |
+| Infra | AWS (API Gateway, WAF, ECS Fargate, SQS, SecretsManager, CloudWatch) |
+| Database | PostgreSQL via Supabase (prod) |
+| Filas | BullMQ + Redis / SQS |
+| Testes | Vitest + Supertest |
+
+### Estrutura do Monorepo
+
+```
+apps/api/          # Backend Fastify (porta 3001)
+  src/
+    server.ts                          # Router principal + setup de rotas
+    db.ts                              # Instância singleton do Prisma
+    click-handler.ts                   # POST /api/v1/track/click
+    perfectpay-webhook-handler.ts      # POST /api/v1/webhooks/perfectpay/:tenantId
+    setup-store.ts                     # Store em-memória para setup sessions
+    validation.ts                      # Validações (parcialmente mockadas)
+  prisma/
+    schema.prisma                      # 8 modelos: Tenant, Click, Identity, etc.
+    migrations/                        # Migrations Prisma
+
+apps/web/          # Frontend Next.js (porta 3000)
+  src/app/page.tsx                     # Wizard onboarding 3 passos
+
+packages/shared/   # Schemas Zod compartilhados entre api e web
+  src/index.ts                         # setupSessionCreateSchema, clickIngestSchema, etc.
+
+docs/
+  stories/                             # Stories de desenvolvimento (story-track-ai-NNN-*.md)
+  learning/GUIDE.md                    # Documentação educativa (linguagem leiga)
+  README-architecture.md               # Overview técnico completo
+  database-schema.md                   # Referência rápida do schema
+```
+
+### Comandos
+
+```bash
+# Monorepo root
+npm install             # Instala todas as dependências (workspaces)
+npm run dev             # Inicia api (3001) + web (3000) em paralelo
+npm run dev:api         # Apenas backend
+npm run dev:web         # Apenas frontend
+npm run build           # Build completo
+npm run lint            # ESLint em todos os apps
+npm run typecheck       # TypeScript --noEmit em todos os apps
+npm run test            # Vitest em todos os apps
+
+# Database (executar a partir de apps/api/)
+npx prisma migrate dev  # Nova migration em dev
+npx prisma generate     # Regenera Prisma Client após mudança no schema
+npx prisma studio       # GUI do banco
+
+# Atalhos raiz
+npm run prisma:migrate
+npm run prisma:generate
+```
+
+### Variáveis de Ambiente
+
+Template em `.env.example`. Valores reais em `infra/secrets/.env.local` (gitignored).
+Variáveis principais:
+
+```
+# Database
+DATABASE_URL             # PostgreSQL Supabase connection string
+
+# Meta CAPI
+META_GRAPH_API_BASE      # https://graph.facebook.com
+
+# PerfectPay
+PERFECTPAY_API_BASE
+PERFECTPAY_WEBHOOK_SECRET
+
+# AWS (para deploy)
+AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+
+# Redis
+REDIS_URL
+```
+
+### Modelo de Dados (schema.prisma)
+
+Modelos principais:
+- **Tenant** — unidade multi-tenant (slug único, status: provisioning/active/suspended/retired)
+- **Click** — cliques de ads (fbclid, fbc, fbp, UTMs, IP, userAgent) indexados por `(tenantId, fbc)` e `(tenantId, fbclid)`
+- **Identity** — hashes de email/phone para matching determinístico, indexados por tenant
+- **DedupeRegistry** — controle de duplicatas CAPI por `(tenantId, eventId)`
+- **DispatchAttempt** — log de tentativas de envio ao Meta CAPI com status/error
+- **SetupSession** — sessões do wizard de onboarding (state, checks, issues em JSON)
+
+### Stories Ativas
+
+| Story | Status | Descrição |
+|-------|--------|-----------|
+| story-track-ai-001 | Done | Setup wizard + API sessions |
+| story-track-ai-002 | Done | Secrets + AWS API Gateway + WAF |
+| story-track-ai-003 | Done | Deploy ECS Fargate + observabilidade |
+| story-track-ai-004 | InProgress | Click ingestion (`POST /api/v1/track/click`) |
+| story-track-ai-005 | InReview | PerfectPay webhook HMAC-SHA256 |
+
+Próximas (backlog): outros gateways (006), match engine (007), SQS dispatch (008), dashboard (009), replay (010).
+
+### Padrões do Projeto
+
+- Validação de entrada sempre via **Zod schemas** do `packages/shared` — nunca validar manualmente
+- Handlers Fastify exportam `register(app, opts)` — nunca instanciam o server diretamente
+- HMAC-SHA256 para autenticação de webhooks (ver `perfectpay-webhook-handler.ts`)
+- Hashing de PII (email, phone) antes de persistir — conformidade LGPD
+- Commits referenciam story: `feat: implement click handler [story-track-ai-004]`
+<!-- PROJECT-CONTEXT-END: hub-server-side-tracking -->
