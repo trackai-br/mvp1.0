@@ -20,16 +20,26 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Helper function to extract URL from AWS response
+extract_queue_url() {
+    grep -o '"QueueUrl": "[^"]*"' | cut -d'"' -f4
+}
+
 # Step 1: Create DLQ (must exist before primary queue references it)
 echo -e "${YELLOW}Step 1: Creating Dead Letter Queue (DLQ)...${NC}"
 DLQ_RESPONSE=$(aws sqs create-queue \
   --queue-name "$DLQ_QUEUE" \
   --region "$REGION" \
-  --attributes "MessageRetentionPeriod=1209600" \
-  --output json)
+  --attributes "MessageRetentionPeriod=1209600" 2>&1)
 
-DLQ_URL=$(echo "$DLQ_RESPONSE" | jq -r '.QueueUrl')
+DLQ_URL=$(echo "$DLQ_RESPONSE" | extract_queue_url)
 DLQ_ARN="arn:aws:sqs:$REGION:$ACCOUNT_ID:$DLQ_QUEUE"
+
+if [ -z "$DLQ_URL" ]; then
+    echo -e "${RED}❌ Failed to create DLQ${NC}"
+    echo "Response: $DLQ_RESPONSE"
+    exit 1
+fi
 
 echo -e "${GREEN}✓ DLQ created: $DLQ_URL${NC}"
 echo ""
@@ -41,11 +51,16 @@ QUEUE_RESPONSE=$(aws sqs create-queue \
   --region "$REGION" \
   --attributes \
     "VisibilityTimeout=30" \
-    "MessageRetentionPeriod=1209600" \
-  --output json)
+    "MessageRetentionPeriod=1209600" 2>&1)
 
-QUEUE_URL=$(echo "$QUEUE_RESPONSE" | jq -r '.QueueUrl')
+QUEUE_URL=$(echo "$QUEUE_RESPONSE" | extract_queue_url)
 QUEUE_ARN="arn:aws:sqs:$REGION:$ACCOUNT_ID:$PRIMARY_QUEUE"
+
+if [ -z "$QUEUE_URL" ]; then
+    echo -e "${RED}❌ Failed to create queue${NC}"
+    echo "Response: $QUEUE_RESPONSE"
+    exit 1
+fi
 
 echo -e "${GREEN}✓ Queue created: $QUEUE_URL${NC}"
 echo ""
@@ -64,25 +79,19 @@ echo ""
 
 # Step 4: Create AWS Secrets Manager Secret
 echo -e "${YELLOW}Step 4: Creating AWS Secrets Manager Secret...${NC}"
-echo "⚠️  IMPORTANT: You must provide the following Meta CAPI credentials:"
-echo "   - META_CAPI_APP_ID (Facebook App ID)"
-echo "   - META_CAPI_TOKEN (Meta Access Token)"
-echo "   - META_FACEBOOK_PIXEL_ID (Facebook Pixel ID)"
-echo ""
-echo "After running this script, update the secret with real values:"
-echo "aws secretsmanager update-secret --secret-id $SECRET_NAME --secret-string '{...}'"
-echo ""
 
-# Create placeholder secret (user will update with real values)
 SECRET_RESPONSE=$(aws secretsmanager create-secret \
   --name "$SECRET_NAME" \
   --region "$REGION" \
-  --secret-string '{"appId":"PLACEHOLDER","accessToken":"PLACEHOLDER","pixelId":"PLACEHOLDER"}' \
-  --output json 2>/dev/null || echo '{"ARN":"exists"}')
+  --secret-string '{"appId":"PLACEHOLDER","accessToken":"PLACEHOLDER","pixelId":"PLACEHOLDER"}' 2>&1)
 
-SECRET_ARN=$(echo "$SECRET_RESPONSE" | jq -r '.ARN // .SecretId' 2>/dev/null || echo "$SECRET_NAME")
+# Check if secret was created (may already exist)
+if echo "$SECRET_RESPONSE" | grep -q "ResourceExistsException\|already exists"; then
+    echo -e "${GREEN}✓ Secret already exists: $SECRET_NAME${NC}"
+else
+    echo -e "${GREEN}✓ Secret created: $SECRET_NAME${NC}"
+fi
 
-echo -e "${GREEN}✓ Secret created/exists: $SECRET_NAME${NC}"
 echo ""
 
 # Step 5: Summary and Output
@@ -113,7 +122,7 @@ echo "      SQS_QUEUE_URL=$QUEUE_URL"
 echo "      SQS_DLQ_URL=$DLQ_URL"
 echo "      META_CAPI_SECRET_NAME=$SECRET_NAME"
 echo ""
-echo "   3. Commit .env.local changes (after removing secrets from version control)"
+echo "   3. Commit changes and notify @dev"
 echo ""
 echo "✅ Ready for Phase 2! @dev can now implement the SQS Worker."
 echo ""
