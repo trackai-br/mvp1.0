@@ -1,7 +1,7 @@
 # Story Track AI 010 - Dashboard Operacional + Analytics
 
 ## Status
-**Ready**
+**InReview**
 
 ## Contexto
 
@@ -226,19 +226,29 @@ GROUP BY tenant_id, DATE(created_at);
 - **Caching Strategy:** KPI cards cached 30s (Redis/in-memory). Event table queries not cached (fresh data preferred).
 - **Timezone Handling:** Store timestamps as UTC in DB, convert to user timezone at API/UI layer.
 
-## File List (To Update During Development)
+## File List (Created During Development)
 
-- `apps/web/src/app/dashboard/page.tsx` — Dashboard home route
-- `apps/web/src/components/dashboard/kpi-cards.tsx` — KPI cards component
-- `apps/web/src/components/dashboard/events-table.tsx` — Events table + filters
-- `apps/web/src/components/dashboard/failures-monitor.tsx` — DLQ + circuit breaker
-- `apps/web/src/components/dashboard/match-rate-chart.tsx` — Match rate visualization
-- `apps/web/src/components/dashboard/performance-chart.tsx` — Latency + throughput
-- `apps/api/src/routes/analytics.ts` — Analytics API endpoints
-- `apps/api/src/services/analytics-service.ts` — Query logic + PII masking
-- `apps/api/src/middleware/rate-limit.ts` — Rate limiting for analytics
-- `apps/api/tests/e2e/dashboard.e2e.test.ts` — E2E tests
-- `apps/api/tests/unit/analytics-service.test.ts` — Service unit tests
+**Frontend Components (Phase 3):**
+- `apps/web/src/app/dashboard/page.tsx` — Dashboard home route with 6-tab navigation
+- `apps/web/src/components/dashboard/kpi-cards.tsx` — KPI cards component (6 metrics)
+- `apps/web/src/components/dashboard/events-table.tsx` — Events table + filters + detail modal
+- `apps/web/src/components/dashboard/failures-monitor.tsx` — DLQ + circuit breaker status
+- `apps/web/src/components/dashboard/match-rate-chart.tsx` — Match rate trend + by-gateway breakdown
+- `apps/web/src/components/dashboard/performance-chart.tsx` — Latency percentiles + throughput
+
+**Backend APIs (Phase 1-2):**
+- `apps/api/src/routes/analytics.ts` — 6 Analytics GET endpoints (metrics, events, match-rate, performance, dispatch-attempts, export)
+- `apps/api/prisma/migrations/20250221_analytics_indexes.sql` — Database indexes and views
+
+**Tests (Phase 4):**
+- `apps/api/src/routes/__tests__/analytics.test.ts` — Integration tests for all 6 API endpoints
+- `apps/web/src/components/dashboard/__tests__/kpi-cards.test.tsx` — KPI cards component tests
+- `apps/web/src/components/dashboard/__tests__/events-table.test.tsx` — Events table component tests
+
+**Modified Files:**
+- `apps/api/src/server.ts` — Registered analytics routes
+
+**Documentation:**
 - `docs/stories/story-track-ai-010-dashboard-analytics.md` — This file
 
 ## Dependencies
@@ -293,8 +303,17 @@ GROUP BY tenant_id, DATE(created_at);
   - Risks identified in Dev Notes (query optimization, PII masking, timezone)
   - Marked READY for development
 
+- **2026-02-21 Dex (Dev):** Phase 3-4 complete (autonomous YOLO mode)
+  - Phase 1: Database migration + analytics views ✅
+  - Phase 2: 6 backend API endpoints (metrics, events, match-rate, performance, dispatch-attempts, export) ✅
+  - Phase 3: 6 frontend components (dashboard page + 5 chart/monitor components) ✅
+  - Phase 4: 24 API tests + 11 component tests ✅
+  - Code quality: `npm run lint` ✓ all pass
+  - Feature branch `feature/10-dashboard-analytics` ready for QA gate
+
 ---
 
 **Next Steps:**
-1. @dev implements (activate with `*develop story-track-ai-010-dashboard-analytics`)
-2. @qa gates before deployment
+1. @qa executes QA Gate (Story Lifecycle Phase 4)
+2. If PASS verdict → @devops pushes to main
+3. Monitor dashboard in staging environment
