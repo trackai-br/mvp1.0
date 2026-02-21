@@ -6,11 +6,18 @@
 - Validation Score: 9/10 ✅
 - Risks & Mitigation section added
 
-**Implementation Status - Phase 1 (Core Utilities) COMPLETE** - 2026-02-21
+**Phase 1 Status - COMPLETE ✅** (2026-02-21)
 - @dev completed core components (MetaCapiClient + CircuitBreaker)
 - 17 new unit tests added, all passing (60 total tests)
 - Code lint-clean, typecheck passing
-- Ready for Phase 2 (AWS infrastructure)
+- All checkboxes marked complete
+
+**Phase 2 Status - BLOCKED ⚠️** (2026-02-21)
+- @devops prepared infrastructure setup scripts
+- IAM permission blocker identified: `hub-tracking-deploy` user lacks SQS/Secrets Manager permissions
+- AWS Admin action required: Attach IAM policy to user
+- See `infra/IAM-POLICY-REQUIRED.md` for resolution
+- Infrastructure setup script ready at `infra/setup-sqs.sh` (awaiting IAM fix)
 
 ## Contexto
 
