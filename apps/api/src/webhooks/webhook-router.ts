@@ -26,15 +26,44 @@ export interface WebhookAdapter {
 /**
  * Standardized webhook event format (gateway-agnostic).
  * All gateways are normalized to this format.
+ * Includes all 15 Meta CAPI parameters for Story 008.
  */
 export interface NormalizedWebhookEvent {
+  // Identification
   gateway: 'hotmart' | 'kiwify' | 'stripe' | 'pagseguro' | 'perfectpay';
   eventId: string; // Unique event ID for deduplication
   eventType: string; // 'approved', 'confirmed', 'succeeded', etc.
-  amount?: number; // In smallest unit (cents for USD, etc.)
+
+  // Purchase data
+  amount?: number;
   currency?: string;
+
+  // --- 15 Meta CAPI Parameters ---
+  // Facebook IDs (not hashed)
+  fbc?: string; // Facebook Container ID
+  fbp?: string; // Facebook Pixel ID
+
+  // Contact info (will be hashed in Story 008)
   customerEmail?: string;
   customerPhone?: string;
+  customerPhoneArea?: string; // Area code for phone formatting
+
+  // Personal info (will be hashed in Story 008)
+  customerFirstName?: string;
+  customerLastName?: string;
+  customerDateOfBirth?: string; // YYYY-MM-DD format
+
+  // Address (will be hashed in Story 008)
+  customerCity?: string;
+  customerState?: string;
+  customerCountry?: string;
+  customerZipCode?: string;
+
+  // External IDs (will be hashed in Story 008)
+  customerExternalId?: string;
+  customerFacebookLoginId?: string;
+
+  // Legacy fields (for backward compatibility)
   productId?: string;
   productName?: string;
   timestamp?: Date;
@@ -59,6 +88,9 @@ export function getWebhookAdapter(gateway: string): WebhookAdapter {
     case 'pagseguro':
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       return require('./pagseguro-adapter').PagSeguroAdapter;
+    case 'perfectpay':
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      return require('./perfectpay-adapter').PerfectPayAdapter;
     default:
       throw new Error(`Unsupported gateway: ${gateway}`);
   }

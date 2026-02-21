@@ -37,6 +37,8 @@ export class PagSeguroAdapter implements WebhookAdapter {
 
   /**
    * Parse PagSeguro webhook payload.
+   * Extracts all 15 Meta CAPI parameters for Story 008.
+   * Note: PagSeguro provides the richest address data of all gateways.
    */
   parseEvent(body: unknown): NormalizedWebhookEvent {
     // NOTE: Pragmatically casting to PagSeguroWebhookBody
@@ -50,13 +52,10 @@ export class PagSeguroAdapter implements WebhookAdapter {
     }
 
     // Determine event type from status code
-    // '3' = PAGTO (payment completed)
-    // '13' = DEVOLVIDO (refunded)
-    // See: https://dev.pagseguro.uol.com.br/reference/consultar-transacao
     const statusMap: Record<string, string> = {
       '1': 'pending',
       '2': 'waiting_payment',
-      '3': 'approved', // PAGTO
+      '3': 'approved',
       '4': 'available',
       '5': 'in_dispute',
       '6': 'refunded',
@@ -66,9 +65,8 @@ export class PagSeguroAdapter implements WebhookAdapter {
       '10': 'pre_approved',
       '11': 'reinstated',
       '12': 'pre_approved_pending',
-      '13': 'approved', // DEVOLVIDO (can be refunded)
+      '13': 'approved',
     };
-
     const eventType = statusMap[parsed.status || ''] || 'unknown';
 
     // Extract items for product info
@@ -80,16 +78,34 @@ export class PagSeguroAdapter implements WebhookAdapter {
       productId = firstItem.id;
     }
 
+    // Extract name into first/last
+    const fullName = parsed.sender?.name || '';
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || undefined;
+    const lastName = nameParts.slice(1).join(' ') || undefined;
+
     const event: NormalizedWebhookEvent = {
       gateway: 'pagseguro',
       eventId: parsed.reference || parsed.id,
       eventType,
       amount,
       currency: parsed.currency || 'BRL',
+      // --- 15 Meta CAPI Parameters ---
+      fbc: undefined, // PagSeguro doesn't send Meta IDs
+      fbp: undefined,
       customerEmail: parsed.sender?.email,
       customerPhone: parsed.sender?.phone
         ? `${parsed.sender.phone.areaCode}${parsed.sender.phone.number}`
         : undefined,
+      customerFirstName: firstName,
+      customerLastName: lastName,
+      customerCity: parsed.shipping?.address?.city,
+      customerState: parsed.shipping?.address?.state,
+      customerCountry: parsed.shipping?.address?.country,
+      customerZipCode: parsed.shipping?.address?.postalCode,
+      customerDateOfBirth: undefined,
+      customerExternalId: parsed.reference, // PagSeguro reference
+      // --- Legacy fields ---
       productId,
       productName,
       timestamp: parsed.lastEventDate

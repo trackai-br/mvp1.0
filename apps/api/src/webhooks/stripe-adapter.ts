@@ -62,6 +62,8 @@ export class StripeAdapter implements WebhookAdapter {
 
   /**
    * Parse Stripe webhook payload.
+   * Extracts all 15 Meta CAPI parameters for Story 008.
+   * Note: Stripe sends minimal customer data in webhooks (privacy-first approach).
    */
   parseEvent(body: unknown): NormalizedWebhookEvent {
     // NOTE: Pragmatically casting to StripeWebhookBody
@@ -79,8 +81,21 @@ export class StripeAdapter implements WebhookAdapter {
       eventType: parsed.type || 'unknown',
       amount,
       currency: data.currency?.toUpperCase(),
+      // --- 15 Meta CAPI Parameters ---
+      fbc: data.metadata?.fbc, // Via metadata
+      fbp: data.metadata?.fbp, // Via metadata
       customerEmail: extractStripeEmail(data),
-      productId: undefined, // Stripe doesn't provide product ID in webhook directly
+      customerPhone: undefined, // Stripe doesn't send phone in webhook
+      customerFirstName: undefined,
+      customerLastName: undefined,
+      customerCity: undefined,
+      customerState: undefined,
+      customerCountry: undefined,
+      customerZipCode: undefined,
+      customerDateOfBirth: undefined,
+      customerExternalId: data.customer, // Stripe customer ID
+      // --- Legacy fields ---
+      productId: undefined,
       productName: undefined,
       timestamp: parsed.created
         ? new Date(parsed.created * 1000)

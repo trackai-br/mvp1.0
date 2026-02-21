@@ -36,6 +36,8 @@ export class KiwifyAdapter implements WebhookAdapter {
 
   /**
    * Parse Kiwify webhook payload.
+   * Extracts all 15 Meta CAPI parameters for Story 008.
+   * Note: Kiwify has conditional data sharing (customer may opt-out).
    */
   parseEvent(body: unknown): NormalizedWebhookEvent {
     // NOTE: Pragmatically casting to KiwifyWebhookBody
@@ -44,6 +46,13 @@ export class KiwifyAdapter implements WebhookAdapter {
 
     // Extract data from nested structure
     const data = parsed.data || {};
+    const customer = data.customer || {};
+
+    // Extract name into first/last
+    const fullName = customer.name || '';
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || undefined;
+    const lastName = nameParts.slice(1).join(' ') || undefined;
 
     const event: NormalizedWebhookEvent = {
       gateway: 'kiwify',
@@ -51,8 +60,20 @@ export class KiwifyAdapter implements WebhookAdapter {
       eventType: parsed.event || data.status || 'unknown',
       amount: data.amount,
       currency: data.currency || 'BRL',
-      customerEmail: data.customer?.email,
-      customerPhone: data.customer?.phone,
+      // --- 15 Meta CAPI Parameters ---
+      fbc: data.custom_fields?.fbc,
+      fbp: data.custom_fields?.fbp,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+      customerFirstName: firstName,
+      customerLastName: lastName,
+      customerCity: undefined, // Kiwify doesn't send address
+      customerState: undefined,
+      customerCountry: undefined,
+      customerZipCode: undefined,
+      customerDateOfBirth: undefined,
+      customerExternalId: parsed.id, // Use order ID
+      // --- Legacy fields ---
       productId: data.product?.id,
       productName: data.product?.name,
       timestamp: parsed.timestamp ? new Date(parsed.timestamp) : undefined,
