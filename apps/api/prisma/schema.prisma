@@ -35,6 +35,8 @@ model Tenant {
   dedupeRegistry  DedupeRegistry[]
   dispatchAttempts DispatchAttempt[]
   sessions        SetupSession[]
+  webhookRaws     WebhookRaw[]
+  conversions     Conversion[]
 }
 
 model Funnel {
@@ -62,6 +64,7 @@ model Click {
   createdAt DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+  matchedConversions Conversion[]
 
   @@index([tenantId, fbc])
   @@index([tenantId, fbclid])
@@ -195,7 +198,7 @@ model WebhookRaw {
   createdAt       DateTime      @default(now())
 
   tenant          Tenant        @relation(fields: [tenantId], references: [id])
-  conversion      Conversion?   @relation(fields: [conversionId], references: [id])
+  conversions     Conversion[]
 
   @@unique([tenantId, gateway, gatewayEventId])
   @@index([tenantId, gateway, createdAt(sort: Desc)])
@@ -257,7 +260,7 @@ model Conversion {
   updatedAt       DateTime      @updatedAt
 
   // ===== RELATIONS =====
-  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   webhookRaw      WebhookRaw    @relation(fields: [webhookRawId], references: [id], onDelete: Cascade)
   matchedClick    Click?        @relation(fields: [matchedClickId], references: [id], onDelete: SetNull)
 
