@@ -16,7 +16,7 @@
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { prisma } from '../db';
+import { prisma } from '../db.js';
 
 /**
  * Query validation schemas

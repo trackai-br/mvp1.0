@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { CapiDispatchWorker } from './capi-dispatch-worker.js';
-import { CircuitState } from '../lib/circuit-breaker';
+import { CircuitState } from '../lib/circuit-breaker.js';
 
 describe('CapiDispatchWorker', () => {
   let worker: CapiDispatchWorker | undefined;

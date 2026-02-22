@@ -1,5 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-import { prisma } from '../db';
+import { prisma } from '../db.js';
 
 /**
  * Meta Conversions API (CAPI) v21 client

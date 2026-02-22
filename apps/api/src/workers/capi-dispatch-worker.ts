@@ -8,9 +8,9 @@ import {
 } from '@aws-sdk/client-sqs';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { CloudWatchClient, PutMetricDataCommand } from '@aws-sdk/client-cloudwatch';
-import { prisma } from '../db';
-import { MetaCapiClient } from '../services/meta-capi-client';
-import { CircuitBreaker, CircuitState } from '../lib/circuit-breaker';
+import { prisma } from '../db.js';
+import { MetaCapiClient } from '../services/meta-capi-client.js';
+import { CircuitBreaker, CircuitState } from '../lib/circuit-breaker.js';
 
 /**
  * SQS Worker for Meta CAPI Dispatch
