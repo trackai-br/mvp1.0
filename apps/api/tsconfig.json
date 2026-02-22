@@ -6,10 +6,7 @@
     "moduleResolution": "NodeNext",
     "module": "NodeNext",
     "types": ["node"],
-    "baseUrl": "../../",
-    "paths": {
-      "@hub/shared": ["packages/shared/src"]
-    }
+    "noImplicitAny": false
   },
   "include": ["src"]
 }
