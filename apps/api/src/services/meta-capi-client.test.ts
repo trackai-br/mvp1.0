@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MetaCapiClient } from './meta-capi-client';
+import { MetaCapiClient } from './meta-capi-client.js';
 
 describe('MetaCapiClient', () => {
   let client: MetaCapiClient;

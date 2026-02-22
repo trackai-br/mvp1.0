@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { handlePageviewIngest } from './pageview-handler';
+import { handlePageviewIngest } from './pageview-handler.js';
 
 describe('pageview handler', () => {
   const validTenant = { id: 'tenant-001' };

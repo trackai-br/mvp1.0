@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createHmac } from 'crypto';
-import { HotmartAdapter } from './hotmart-adapter';
+import { HotmartAdapter } from './hotmart-adapter.js';
 
 describe('HotmartAdapter', () => {
   const adapter = new HotmartAdapter();

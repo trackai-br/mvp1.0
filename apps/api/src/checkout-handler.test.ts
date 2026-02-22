@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { handleCheckoutIngest } from './checkout-handler';
+import { handleCheckoutIngest } from './checkout-handler.js';
 
 describe('checkout handler', () => {
   const validTenant = { id: 'tenant-001' };

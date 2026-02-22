@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createHmac } from 'crypto';
-import { PagSeguroAdapter } from './pagseguro-adapter';
+import { PagSeguroAdapter } from './pagseguro-adapter.js';
 
 describe('PagSeguroAdapter', () => {
   const adapter = new PagSeguroAdapter();

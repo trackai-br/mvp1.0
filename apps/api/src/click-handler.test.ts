@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 // Evita import de .prisma/client (não disponível em ambiente de teste)
 vi.mock('./db', () => ({ prisma: {} }));
 
-import { handleClickIngest } from './click-handler';
+import { handleClickIngest } from './click-handler.js';
 
 const fakeRequest = {
   ip: '1.2.3.4',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SetupSessionStatus } from '@hub/shared';
-import { runValidations } from './validation';
+import { runValidations } from './validation.js';
 
 function makeSession(): SetupSessionStatus {
   return {

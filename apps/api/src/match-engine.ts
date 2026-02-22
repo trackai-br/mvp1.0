@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import { prisma } from './db';
-import type { NormalizedWebhookEvent } from './webhooks/webhook-router';
+import { prisma } from './db.js';
+import type { NormalizedWebhookEvent } from './webhooks/webhook-router.js';
 import type { $Enums } from '.prisma/client';
 
 /**

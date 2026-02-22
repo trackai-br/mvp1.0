@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createHmac } from 'crypto';
-import { KiwifyAdapter } from './kiwify-adapter';
+import { KiwifyAdapter } from './kiwify-adapter.js';
 
 describe('KiwifyAdapter', () => {
   const adapter = new KiwifyAdapter();

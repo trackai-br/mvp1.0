@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createHmac } from 'crypto';
-import { StripeAdapter } from './stripe-adapter';
+import { StripeAdapter } from './stripe-adapter.js';
 
 describe('StripeAdapter', () => {
   const adapter = new StripeAdapter();

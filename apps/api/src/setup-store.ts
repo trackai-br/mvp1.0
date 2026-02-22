@@ -1,6 +1,6 @@
 import type { SetupSessionCreateInput, SetupSessionStatus } from '@hub/shared';
-import { buildWebhookData } from './webhook-utils';
-import { prisma } from './db';
+import { buildWebhookData } from './webhook-utils.js';
+import { prisma } from './db.js';
 
 function generateToken() {
   return crypto.randomUUID().replace(/-/g, '');

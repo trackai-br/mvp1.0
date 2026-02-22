@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import { NormalizedWebhookEvent, WebhookAdapter } from './webhook-router';
+import { NormalizedWebhookEvent, WebhookAdapter } from './webhook-router.js';
 
 /**
  * Hotmart webhook adapter.

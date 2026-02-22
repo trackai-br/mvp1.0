@@ -1,5 +1,5 @@
 import type { ClickIngestInput } from '@hub/shared';
-import { prisma } from './db';
+import { prisma } from './db.js';
 
 export type ClickHandlerDeps = {
   findTenant?: (id: string) => Promise<{ id: string } | null>;

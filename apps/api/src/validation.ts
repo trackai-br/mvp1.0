@@ -1,9 +1,9 @@
 import type { SetupSessionStatus } from '@hub/shared';
-import { validateMetaTokenRemote, type MetaValidationResult } from './meta-client';
+import { validateMetaTokenRemote, type MetaValidationResult } from './meta-client.js';
 import {
   validatePerfectPayToken,
   type PerfectPayValidationResult
-} from './perfectpay-client';
+} from './perfectpay-client.js';
 
 type ValidationDeps = {
   validateMetaToken?: (input: {

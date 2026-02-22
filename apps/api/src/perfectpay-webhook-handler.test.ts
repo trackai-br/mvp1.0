@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('./db', () => ({ prisma: {} }));
 
-import { handlePerfectPayWebhook } from './perfectpay-webhook-handler';
+import { handlePerfectPayWebhook } from './perfectpay-webhook-handler.js';
 
 const SECRET = 'test-secret-key';
 const TENANT_ID = 'tenant-abc';

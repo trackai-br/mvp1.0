@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { PerfectPayWebhookBody } from '@hub/shared';
-import { prisma } from './db';
+import { prisma } from './db.js';
 
 export type PerfectPayHandlerDeps = {
   getSecret?: () => string | undefined;

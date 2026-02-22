@@ -7,15 +7,15 @@ import {
   clickIngestSchema,
   perfectPayWebhookSchema,
 } from '@hub/shared';
-import { createSetupSession, getSetupSession, saveSetupSession } from './setup-store';
-import { runValidations } from './validation';
-import { handleClickIngest } from './click-handler';
-import { handlePageviewIngest } from './pageview-handler';
-import { handleCheckoutIngest } from './checkout-handler';
-import { handlePerfectPayWebhook } from './perfectpay-webhook-handler';
-import { registerWebhookRoutes } from './webhooks/webhook-router';
-import { register as registerAnalyticsRoutes } from './routes/analytics';
-import { prisma } from './db';
+import { createSetupSession, getSetupSession, saveSetupSession } from './setup-store.js';
+import { runValidations } from './validation.js';
+import { handleClickIngest } from './click-handler.js';
+import { handlePageviewIngest } from './pageview-handler.js';
+import { handleCheckoutIngest } from './checkout-handler.js';
+import { handlePerfectPayWebhook } from './perfectpay-webhook-handler.js';
+import { registerWebhookRoutes } from './webhooks/webhook-router.js';
+import { register as registerAnalyticsRoutes } from './routes/analytics.js';
+import { prisma } from './db.js';
 
 type PerfectPayWebhookParams = {
   sessionId: string;

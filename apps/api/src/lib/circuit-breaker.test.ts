@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'; // vi used for mocking
-import { CircuitBreaker, CircuitState } from './circuit-breaker';
+import { CircuitBreaker, CircuitState } from './circuit-breaker.js';
 
 describe('CircuitBreaker', () => {
   let breaker: CircuitBreaker;
