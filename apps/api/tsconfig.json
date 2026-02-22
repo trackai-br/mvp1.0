@@ -3,11 +3,11 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "baseUrl": "../../",
+    "baseUrl": ".",
     "moduleResolution": "NodeNext",
     "module": "NodeNext",
     "paths": {
-      "@hub/shared": ["packages/shared/src"]
+      "@hub/shared": ["../../packages/shared/src"]
     },
     "types": ["node"]
   },
