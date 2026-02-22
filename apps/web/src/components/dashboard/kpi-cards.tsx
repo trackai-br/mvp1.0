@@ -5,13 +5,21 @@
 
 import React from 'react';
 
-interface KPICardsProps {
-  metrics: any;
-  isLoading: boolean;
-  period: string;
+interface Metrics {
+  total_events: number;
+  success_rate_pct: number;
+  match_rate_pct: number;
+  latency_p95_ms: number;
+  dlq_backlog: number;
+  uptime_pct: number;
 }
 
-export default function KPICards({ metrics, isLoading, period }: KPICardsProps) {
+interface KPICardsProps {
+  metrics: Metrics | undefined;
+  isLoading: boolean;
+}
+
+export default function KPICards({ metrics, isLoading }: KPICardsProps) {
   const kpis = [
     {
       label: 'Total Events',

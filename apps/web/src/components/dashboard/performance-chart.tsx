@@ -7,8 +7,24 @@ import {
   AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 
+interface PerformanceData {
+  data: Array<{
+    date: string;
+    latency_p50: number;
+    latency_p95: number;
+    latency_p99: number;
+    throughput_eps: number;
+  }>;
+  summary: {
+    avg_p50_ms: number;
+    avg_p95_ms: number;
+    avg_p99_ms: number;
+    avg_throughput_eps: number;
+  };
+}
+
 interface PerformanceChartProps {
-  data: any;
+  data: PerformanceData | undefined;
   isLoading: boolean;
   period: string;
 }

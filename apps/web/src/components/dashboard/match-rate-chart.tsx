@@ -7,8 +7,14 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 
+interface MatchRateData {
+  data: Array<{ date: string; match_rate_pct: number }>;
+  by_gateway: Array<{ gateway: string; match_rate_pct: number }>;
+  summary: { avg_match_rate_pct: number; max_match_rate_pct: number };
+}
+
 interface MatchRateChartProps {
-  data: any;
+  data: MatchRateData | undefined;
   isLoading: boolean;
   period: string;
 }

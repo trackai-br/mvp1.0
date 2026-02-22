@@ -6,25 +6,23 @@ describe('EventsTable Component', () => {
   const mockEvents = [
     {
       id: '1',
-      event_id: 'evt_1234567890abcdef',
-      status: 'sent',
-      capi_event: { conversion: { gateway: 'facebook' } },
-      latency_ms: 145,
-      created_at: '2025-02-21T10:00:00Z',
-      provider_response: '{"status":"ok"}',
+      eventId: 'evt_1234567890abcdef',
+      status: 'success',
+      error: undefined,
+      attempt: 1,
+      createdAt: '2025-02-21T10:00:00Z',
     },
     {
       id: '2',
-      event_id: 'evt_abcdef1234567890',
+      eventId: 'evt_abcdef1234567890',
       status: 'failed',
-      capi_event: { conversion: { gateway: 'google' } },
-      latency_ms: 2450,
-      created_at: '2025-02-21T09:00:00Z',
-      provider_response: '{"error":"rate_limit"}',
+      error: 'rate_limit',
+      attempt: 2,
+      createdAt: '2025-02-21T09:00:00Z',
     },
   ];
 
-  const mockPagination = {
+  const mockPagination: {page: number; pages: number; total: number} = {
     page: 1,
     pages: 5,
     total: 234,
@@ -36,14 +34,13 @@ describe('EventsTable Component', () => {
         events={mockEvents}
         isLoading={false}
         pagination={mockPagination}
-        period="7d"
       />
     );
 
     expect(screen.getByText('Event ID')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
-    expect(screen.getByText('Gateway')).toBeInTheDocument();
-    expect(screen.getByText('Latency (ms)')).toBeInTheDocument();
+    expect(screen.getByText('Attempt')).toBeInTheDocument();
+    expect(screen.getByText('Time')).toBeInTheDocument();
   });
 
   it('should display event data in rows', () => {
@@ -52,13 +49,15 @@ describe('EventsTable Component', () => {
         events={mockEvents}
         isLoading={false}
         pagination={mockPagination}
-        period="7d"
       />
     );
 
-    expect(screen.getByText(/evt_1234567890ab/)).toBeInTheDocument();
-    expect(screen.getByText('sent')).toBeInTheDocument();
+    // Check that table contains the status values from mock events
+    expect(screen.getByText('success')).toBeInTheDocument();
     expect(screen.getByText('failed')).toBeInTheDocument();
+    // Check that attempt numbers are displayed
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('should show loading state', () => {
@@ -67,7 +66,6 @@ describe('EventsTable Component', () => {
         events={[]}
         isLoading={true}
         pagination={mockPagination}
-        period="7d"
       />
     );
 
@@ -80,7 +78,6 @@ describe('EventsTable Component', () => {
         events={mockEvents}
         isLoading={false}
         pagination={mockPagination}
-        period="7d"
       />
     );
 
@@ -88,7 +85,7 @@ describe('EventsTable Component', () => {
     fireEvent.click(detailsButtons[0]);
 
     expect(screen.getByText('Event Details')).toBeInTheDocument();
-    expect(screen.getByText(mockEvents[0].event_id)).toBeInTheDocument();
+    expect(screen.getByText(mockEvents[0].eventId)).toBeInTheDocument();
   });
 
   it('should close modal on close button', () => {
@@ -97,7 +94,6 @@ describe('EventsTable Component', () => {
         events={mockEvents}
         isLoading={false}
         pagination={mockPagination}
-        period="7d"
       />
     );
 
@@ -116,7 +112,6 @@ describe('EventsTable Component', () => {
         events={mockEvents}
         isLoading={false}
         pagination={mockPagination}
-        period="7d"
       />
     );
 
@@ -129,7 +124,6 @@ describe('EventsTable Component', () => {
         events={mockEvents}
         isLoading={false}
         pagination={mockPagination}
-        period="7d"
       />
     );
 
@@ -143,7 +137,6 @@ describe('EventsTable Component', () => {
         events={[]}
         isLoading={false}
         pagination={{ page: 1, pages: 1, total: 0 }}
-        period="7d"
       />
     );
 

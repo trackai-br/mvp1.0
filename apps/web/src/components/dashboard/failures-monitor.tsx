@@ -2,7 +2,16 @@
  * Failures Monitor — DLQ + Circuit Breaker status
  */
 
-export default function FailuresMonitor({ metrics, isLoading }: any) {
+interface Metrics {
+  dlq_backlog: number;
+}
+
+interface FailuresMonitorProps {
+  metrics: Metrics | undefined;
+  isLoading: boolean;
+}
+
+export default function FailuresMonitor({ metrics, isLoading }: FailuresMonitorProps) {
   if (isLoading) return <div className="text-center py-12">Loading...</div>;
 
   return (
