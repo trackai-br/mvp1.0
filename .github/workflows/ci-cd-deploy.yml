@@ -1,0 +1,288 @@
+name: CI/CD - Build & Deploy to ECS Fargate
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY || 'hub-server-side-tracking-api' }}
+  ECS_SERVICE: ${{ secrets.ECS_SERVICE || 'hub-api-service' }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER || 'hub-cluster' }}
+  ECS_TASK_DEFINITION: ${{ secrets.ECS_TASK_DEFINITION || 'hub-api-task' }}
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # Quality Gates: Lint, Type Check, Tests
+  # ──────────────────────────────────────────────────────────────
+  quality:
+    name: Quality Gates (Lint, TypeCheck, Tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+        continue-on-error: false
+
+      - name: TypeScript type checking
+        run: npm run typecheck
+        continue-on-error: false
+
+      - name: Run tests
+        run: npm run test
+        continue-on-error: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            apps/api/coverage
+            apps/web/coverage
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────
+  # Build: Compile TypeScript and Create Docker Image
+  # ──────────────────────────────────────────────────────────────
+  build:
+    name: Build Docker Image
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    outputs:
+      image-uri: ${{ steps.image.outputs.image-uri }}
+      image-tag: ${{ steps.image.outputs.image-tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Configure AWS credentials
+        if: github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: github.ref == 'refs/heads/main'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        if: github.ref == 'refs/heads/main'
+        id: image
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG -t $REGISTRY/$REPOSITORY:latest ./apps/api
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker push $REGISTRY/$REPOSITORY:latest
+          echo "image-uri=$REGISTRY/$REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  # ──────────────────────────────────────────────────────────────
+  # Deploy: Update ECS Service with New Image
+  # ──────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to ECS Fargate
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get current task definition
+        id: task-def
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_TASK_DEFINITION }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'taskDefinition' > task-definition.json
+          cat task-definition.json
+
+      - name: Update task definition with new image
+        id: task-def-update
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: hub-api
+          image: ${{ needs.build.outputs.image-uri }}
+
+      - name: Register new task definition
+        id: register-task
+        run: |
+          aws ecs register-task-definition \
+            --cli-input-json file://${{ steps.task-def-update.outputs.task-definition }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Update ECS service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --task-definition ${{ env.ECS_TASK_DEFINITION }}:1 \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for service to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Deployment summary
+        run: |
+          echo "✅ Deployment completed successfully"
+          echo "📦 Image: ${{ needs.build.outputs.image-uri }}"
+          echo "📋 Service: ${{ env.ECS_SERVICE }}"
+          echo "🎯 Cluster: ${{ env.ECS_CLUSTER }}"
+
+  # ──────────────────────────────────────────────────────────────
+  # Frontend Deploy: Vercel (Optional)
+  # ──────────────────────────────────────────────────────────────
+  deploy-vercel:
+    name: Deploy Frontend to Vercel
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        uses: vercel/action@master
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./apps/web
+          production: true
+        continue-on-error: true
+
+  # ──────────────────────────────────────────────────────────────
+  # Notification: Slack/Email on Success or Failure
+  # ──────────────────────────────────────────────────────────────
+  notify:
+    name: Send deployment notification
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [quality, build, deploy]
+
+    steps:
+      - name: Determine status
+        id: status
+        run: |
+          if [ "${{ needs.quality.result }}" == "success" ] && [ "${{ needs.build.result }}" == "success" ]; then
+            if [ "${{ needs.deploy.result }}" == "success" ] || [ "${{ needs.deploy.result }}" == "skipped" ]; then
+              echo "status=✅ DEPLOYMENT SUCCESSFUL" >> $GITHUB_OUTPUT
+              echo "color=28a745" >> $GITHUB_OUTPUT
+            else
+              echo "status=⚠️ BUILD SUCCESSFUL, DEPLOY FAILED" >> $GITHUB_OUTPUT
+              echo "color=ffc107" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "status=❌ QUALITY GATES FAILED" >> $GITHUB_OUTPUT
+            echo "color=dc3545" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Slack notification
+        if: vars.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "${{ steps.status.outputs.status }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ steps.status.outputs.status }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n${{ github.sha }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Author:*\n${{ github.actor }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow"
+                      },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
