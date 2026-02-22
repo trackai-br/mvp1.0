@@ -5,7 +5,11 @@
     "rootDir": "src",
     "moduleResolution": "NodeNext",
     "module": "NodeNext",
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": "../../",
+    "paths": {
+      "@hub/shared": ["packages/shared/src", "packages/shared/dist"]
+    }
   },
   "include": ["src"]
 }

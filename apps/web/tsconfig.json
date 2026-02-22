@@ -22,15 +22,15 @@
         "name": "next"
       }
     ],
+    "baseUrl": "../../",
     "paths": {
       "@/*": [
-        "src/*"
+        "apps/web/src/*"
       ],
       "@hub/shared": [
-        "../../packages/shared/src"
+        "packages/shared/src", "packages/shared/dist"
       ]
     },
-    "baseUrl": ".",
     "isolatedModules": true
   },
   "include": [
