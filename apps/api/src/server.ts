@@ -14,6 +14,7 @@ import { handlePageviewIngest } from './pageview-handler';
 import { handleCheckoutIngest } from './checkout-handler';
 import { handlePerfectPayWebhook } from './perfectpay-webhook-handler';
 import { registerWebhookRoutes } from './webhooks/webhook-router';
+import { register as registerAnalyticsRoutes } from './routes/analytics';
 import { prisma } from './db';
 
 type PerfectPayWebhookParams = {
@@ -200,6 +201,9 @@ async function bootstrap() {
 
   // Register generic webhook routes for multi-gateway support
   await registerWebhookRoutes(app);
+
+  // Register analytics routes (Story 010: Dashboard Operacional)
+  await registerAnalyticsRoutes(app);
 
   await app.listen({ port: 3001, host: '0.0.0.0' });
 }
