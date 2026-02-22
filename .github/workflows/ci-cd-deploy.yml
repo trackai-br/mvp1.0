@@ -187,27 +187,11 @@ jobs:
           echo "🎯 Cluster: ${{ env.ECS_CLUSTER }}"
 
   # ──────────────────────────────────────────────────────────────
-  # Frontend Deploy: Vercel (Optional)
+  # Frontend Deploy: Vercel (Optional - Disabled)
   # ──────────────────────────────────────────────────────────────
-  deploy-vercel:
-    name: Deploy Frontend to Vercel
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy to Vercel
-        uses: vercel/action@master
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./apps/web
-          production: true
-        continue-on-error: true
+  # DISABLED: Vercel action not available in this account
+  # Frontend deployment handled separately via Vercel CLI
+  # TODO: Configure vercel CLI integration or find working action
 
   # ──────────────────────────────────────────────────────────────
   # Notification: Slack/Email on Success or Failure
@@ -217,6 +201,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs: [quality, build, deploy]
+    # Note: deploy-vercel removed — not available in this account
 
     steps:
       - name: Determine status
