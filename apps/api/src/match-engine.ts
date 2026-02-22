@@ -225,7 +225,7 @@ export async function getMatchStats(
     select: { id: true },
   });
 
-  const conversionIds = conversions.map((c) => c.id);
+  const conversionIds = conversions.map((c: typeof conversions[0]) => c.id);
 
   const stats = await prisma.matchLog.groupBy({
     by: ['finalStrategy'],
@@ -237,16 +237,16 @@ export async function getMatchStats(
     _count: true,
   });
 
-  const total = stats.reduce((sum, s) => sum + (s._count || 0), 0);
+  const total = stats.reduce((sum: number, s) => sum + (s._count || 0), 0);
   const matched = stats
     .filter((s) => s.finalStrategy && s.finalStrategy !== 'unmatched')
-    .reduce((sum, s) => sum + (s._count || 0), 0);
+    .reduce((sum: number, s) => sum + (s._count || 0), 0);
 
   return {
     total,
     matched,
     matchRate: total > 0 ? (matched / total) * 100 : 0,
-    byStrategy: stats.map((s) => ({
+    byStrategy: stats.map((s: typeof stats[0]) => ({
       strategy: s.finalStrategy,
       count: s._count || 0,
       percentage: total > 0 ? ((s._count || 0) / total) * 100 : 0,

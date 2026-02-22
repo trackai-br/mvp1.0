@@ -11,9 +11,9 @@ on:
 env:
   AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY || 'hub-server-side-tracking-api' }}
-  ECS_SERVICE: ${{ secrets.ECS_SERVICE || 'hub-api-service' }}
-  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER || 'hub-cluster' }}
-  ECS_TASK_DEFINITION: ${{ secrets.ECS_TASK_DEFINITION || 'hub-api-task' }}
+  ECS_SERVICE: ${{ secrets.ECS_SERVICE || 'hub-server-side-tracking-service' }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER || 'hub-server-side-tracking-cluster' }}
+  ECS_TASK_DEFINITION: ${{ secrets.ECS_TASK_DEFINITION || 'hub-server-side-tracking' }}
 
 jobs:
   # ──────────────────────────────────────────────────────────────
@@ -36,6 +36,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
       - name: ESLint
         run: npm run lint
