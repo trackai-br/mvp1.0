@@ -28,7 +28,7 @@
         "apps/web/src/*"
       ],
       "@hub/shared": [
-        "packages/shared/src", "packages/shared/dist"
+        "packages/shared/src"
       ]
     },
     "isolatedModules": true

@@ -8,7 +8,7 @@
     "types": ["node"],
     "baseUrl": "../../",
     "paths": {
-      "@hub/shared": ["packages/shared/src", "packages/shared/dist"]
+      "@hub/shared": ["packages/shared/src"]
     }
   },
   "include": ["src"]

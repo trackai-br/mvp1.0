@@ -10,7 +10,7 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@hub/shared": ["packages/shared/src", "packages/shared/dist"]
+      "@hub/shared": ["packages/shared/src"]
     }
   }
 }
