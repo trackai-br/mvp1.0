@@ -1,0 +1,100 @@
+# AWS Configuration
+aws_region     = "us-east-1"
+aws_account_id = "123456789012"  # Replace with your AWS Account ID
+
+# Application Configuration
+app_name    = "hub-server-side-tracking"
+environment = "production"
+
+# ─────────────────────────────────────────────────────────────
+# ECS Configuration (Fargate)
+# ─────────────────────────────────────────────────────────────
+
+# CPU and memory combinations for Fargate:
+# 256 CPU:  512, 1024, 2048 MB
+# 512 CPU:  1024, 2048, 3072, 4096 MB
+# 1024 CPU: 2048, 3072, 4096, 5120, 6144, 7168, 8192 MB
+# 2048 CPU: 4096-16384 MB (in 1024 MB increments)
+
+ecs_task_cpu    = 256    # 0.25 vCPU (minimum)
+ecs_task_memory = 512    # 512 MB (minimum)
+ecs_desired_count = 1    # Number of running tasks
+
+# ─────────────────────────────────────────────────────────────
+# RDS Configuration
+# ─────────────────────────────────────────────────────────────
+
+rds_instance_class        = "db.t4g.micro"     # t4g.micro = 1 vCPU, 1GB RAM (~$9/month)
+rds_allocated_storage     = 20                 # 20 GB minimum
+rds_storage_type          = "gp3"              # General purpose SSD
+rds_backup_retention      = 7                  # Days
+rds_engine_version        = "16.1"             # PostgreSQL version
+rds_multi_az              = false              # Set to true for high availability (~2x cost)
+rds_publicly_accessible   = false              # Keep private for security
+
+rds_master_username = "postgres"
+
+# Generate a strong password:
+# Linux/Mac: openssl rand -base64 32
+# Output example: "a7Zt9vB2mK4xL6pQ8wN1yR5jU3cF6dH9sG8eT2xP7oL"
+rds_master_password = "REPLACE_WITH_STRONG_PASSWORD_32_CHARS"
+
+# ─────────────────────────────────────────────────────────────
+# ElastiCache Redis Configuration
+# ─────────────────────────────────────────────────────────────
+
+redis_node_type           = "cache.t4g.micro"  # t4g.micro = 0.5 vCPU, 512MB RAM (~$13/month)
+redis_engine_version      = "7.0"              # Redis version
+redis_num_cache_nodes     = 1                  # Number of nodes
+redis_parameter_group_family = "redis7"        # Must match engine version
+redis_port                = 6379               # Standard Redis port
+redis_automatic_failover  = false              # Set to true for Multi-AZ
+
+# ─────────────────────────────────────────────────────────────
+# Network Configuration
+# ─────────────────────────────────────────────────────────────
+
+vpc_cidr           = "10.0.0.0/16"             # VPC CIDR block
+enable_nat_gateway = true                      # Enable NAT Gateway for private subnets
+
+# ─────────────────────────────────────────────────────────────
+# Monitoring & Logging
+# ─────────────────────────────────────────────────────────────
+
+enable_cloudwatch_logs    = true               # Enable CloudWatch Logs
+cloudwatch_log_retention  = 7                  # Days
+enable_cloudwatch_alarms  = true               # Enable CloudWatch Alarms
+
+# ─────────────────────────────────────────────────────────────
+# Health Check Configuration
+# ─────────────────────────────────────────────────────────────
+
+container_port                     = 3001                  # Backend application port
+health_check_path                  = "/api/v1/health"      # Health check endpoint
+health_check_healthy_threshold      = 2                    # Consecutive successful checks
+health_check_unhealthy_threshold    = 3                    # Consecutive failed checks
+health_check_timeout               = 5                    # Seconds
+health_check_interval              = 30                   # Seconds
+
+# ─────────────────────────────────────────────────────────────
+# Tags
+# ─────────────────────────────────────────────────────────────
+
+tags = {
+  ManagedBy   = "Terraform"
+  Project     = "hub-server-side-tracking"
+  Environment = "production"
+  Team        = "Engineering"
+}
+
+# ─────────────────────────────────────────────────────────────
+# Cost Estimation (Monthly)
+# ─────────────────────────────────────────────────────────────
+#
+# ECS Fargate (0.25 vCPU, 512MB, 730h):  ~$3.33
+# RDS t4g.micro (20GB gp3):               ~$9.50
+# ElastiCache t4g.micro:                  ~$13.50
+# NAT Gateway (data processed):           ~$10-20
+# Total:                                  ~$36-46/month
+#
+# For production high-availability (Multi-AZ): 2x-3x cost increase

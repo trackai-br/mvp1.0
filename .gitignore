@@ -30,3 +30,11 @@ Thumbs.db
 .aios-core/local/
 .claude/settings.local.json
 .aios/install-log.txt
+
+
+# Terraform
+terraform.tfvars
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
