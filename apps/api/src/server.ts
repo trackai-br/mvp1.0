@@ -33,10 +33,11 @@ async function bootstrap() {
   });
 
   // Decorate app with authenticate hook for protected routes
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (app as any).authenticate = async function(request: any, reply: any) {
     try {
       await request.jwtVerify();
-    } catch (err) {
+    } catch {
       reply.code(401).send({ message: 'Unauthorized' });
     }
   };
