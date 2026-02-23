@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import { prisma } from './db.js';
 import type { NormalizedWebhookEvent } from './webhooks/webhook-router.js';
 import type { $Enums } from '.prisma/client';
@@ -38,19 +37,20 @@ type MatchStrategy = $Enums.MatchStrategy;
 type GatewayType = $Enums.GatewayType;
 
 /**
- * Hash PII field with SHA-256
- */
-function hashPII(value: string): string {
-  return crypto.createHash('sha256').update(value.toLowerCase().trim()).digest('hex');
-}
-
-/**
- * Calculate 72-hour window (in milliseconds)
+ * Match window: 72 hours in milliseconds
+ * Clicks older than this window will not be matched to conversions.
  */
 const MATCH_WINDOW_MS = 72 * 60 * 60 * 1000;
 
 /**
- * Execute matching logic
+ * Execute matching logic on an existing Conversion.
+ * Assumes Conversion already exists (created by webhook-router).
+ * This function:
+ * 1. Finds the Conversion by webhookRawId
+ * 2. Attempts to match it with Clicks (FBC → FBP → Unmatched)
+ * 3. Updates Conversion with match results
+ * 4. Creates MatchLog for audit trail
+ * 5. Returns ConversionOutput for SQS dispatch (Story 009)
  */
 export async function matchConversion(input: ConversionInput): Promise<ConversionOutput> {
   const { tenantId, gateway, webhookRawId, event } = input;
@@ -60,18 +60,38 @@ export async function matchConversion(input: ConversionInput): Promise<Conversio
     throw new Error('ConversionEvent eventId is required');
   }
 
+  // STEP 1: Fetch existing Conversion (created by webhook-router)
+  const conversion = await prisma.conversion.findFirst({
+    where: {
+      tenantId,
+      webhookRawId,
+      gateway: gateway as GatewayType,
+    },
+  });
+
+  if (!conversion) {
+    throw new Error(`Conversion not found for webhookRawId: ${webhookRawId}`);
+  }
+
   const now = new Date();
   const windowStart = new Date(now.getTime() - MATCH_WINDOW_MS);
 
   let matchedClickId: string | undefined;
   let matchStrategy: MatchStrategy = 'unmatched';
+  let fbcAttempted = false;
+  let fbcResult: string | undefined;
+  let fbcClickId: string | null = null;
+  let fbpAttempted = false;
+  let fbpResult: string | undefined;
+  let fbpClickId: string | null = null;
 
-  // STEP 1: Try FBC matching (primary strategy)
-  if (event.fbc) {
+  // STEP 2: Try FBC matching (primary strategy)
+  if (conversion.fbc) {
+    fbcAttempted = true;
     const fbcMatch = await prisma.click.findFirst({
       where: {
         tenantId,
-        fbc: event.fbc,
+        fbc: conversion.fbc,
         createdAt: {
           gte: windowStart,
           lte: now,
@@ -82,17 +102,22 @@ export async function matchConversion(input: ConversionInput): Promise<Conversio
     });
 
     if (fbcMatch) {
+      fbcResult = 'found';
+      fbcClickId = fbcMatch.id;
       matchedClickId = fbcMatch.id;
       matchStrategy = 'fbc';
+    } else {
+      fbcResult = 'not_found';
     }
   }
 
-  // STEP 2: Try FBP matching (fallback if no FBC match)
-  if (!matchedClickId && event.fbp) {
+  // STEP 3: Try FBP matching (fallback if no FBC match)
+  if (!matchedClickId && conversion.fbp) {
+    fbpAttempted = true;
     const fbpMatch = await prisma.click.findFirst({
       where: {
         tenantId,
-        fbp: event.fbp,
+        fbp: conversion.fbp,
         createdAt: {
           gte: windowStart,
           lte: now,
@@ -103,45 +128,22 @@ export async function matchConversion(input: ConversionInput): Promise<Conversio
     });
 
     if (fbpMatch) {
+      fbpResult = 'found';
+      fbpClickId = fbpMatch.id;
       matchedClickId = fbpMatch.id;
       matchStrategy = 'fbp';
+    } else {
+      fbpResult = 'not_found';
     }
   }
 
-  // STEP 3: Hash PII fields (always hash, regardless of match)
-  const conversion = {
-    tenantId,
-    webhookRawId,
-    matchedClickId: matchedClickId || null,
-    matchStrategy: matchStrategy as MatchStrategy,
-    // --- Meta CAPI Parameters (15 fields) ---
-    // NOT hashed: FBC, FBP, country, currency, gateway
-    fbc: event.fbc,
-    fbp: event.fbp,
-    currency: event.currency,
-    // Hashed: email, phone, firstName, lastName, dateOfBirth, city, state, zip, externalId, facebookLoginId
-    emailHash: event.customerEmail ? hashPII(event.customerEmail) : null,
-    phoneHash: event.customerPhone ? hashPII(event.customerPhone.replace(/\D/g, '')) : null,
-    firstNameHash: event.customerFirstName ? hashPII(event.customerFirstName) : null,
-    lastNameHash: event.customerLastName ? hashPII(event.customerLastName) : null,
-    dateOfBirthHash: event.customerDateOfBirth ? hashPII(event.customerDateOfBirth) : null,
-    cityHash: event.customerCity ? hashPII(event.customerCity) : null,
-    stateHash: event.customerState ? hashPII(event.customerState) : null,
-    countryCode: event.customerCountry, // NOT hashed (ISO code)
-    zipCodeHash: event.customerZipCode ? hashPII(event.customerZipCode) : null,
-    externalIdHash: event.customerExternalId ? hashPII(event.customerExternalId) : null,
-    facebookLoginId: event.customerFacebookLoginId
-      ? hashPII(event.customerFacebookLoginId)
-      : null,
-    // Required schema fields
-    amount: event.amount,
-    gateway: gateway as GatewayType,
-    gatewayEventId: event.eventId, // Used for unique constraint dedup
-  };
-
-  // STEP 4: Persist Conversion (idempotent via unique constraint)
-  const createdConversion = await prisma.conversion.create({
-    data: conversion,
+  // STEP 4: Update Conversion with match results
+  await prisma.conversion.update({
+    where: { id: conversion.id },
+    data: {
+      matchedClickId,
+      matchStrategy: matchStrategy !== 'unmatched' ? matchStrategy : undefined,
+    },
   });
 
   // STEP 5: Create MatchLog audit record with detailed strategy tracking
@@ -149,20 +151,15 @@ export async function matchConversion(input: ConversionInput): Promise<Conversio
 
   const matchLog = await prisma.matchLog.create({
     data: {
-      conversionId: createdConversion.id,
+      conversionId: conversion.id,
       // FBC strategy tracking
-      fbcAttempted: !!event.fbc,
-      fbcResult: !event.fbc ? undefined : matchedClickId && matchStrategy === 'fbc' ? 'found' : 'not_found',
-      fbcClickId: matchedClickId && matchStrategy === 'fbc' ? matchedClickId : null,
+      fbcAttempted,
+      fbcResult,
+      fbcClickId,
       // FBP strategy tracking
-      fbpAttempted: !matchedClickId && !!event.fbp,
-      fbpResult:
-        !event.fbp || matchedClickId
-          ? undefined
-          : matchStrategy === 'fbp'
-            ? 'found'
-            : 'not_found',
-      fbpClickId: matchedClickId && matchStrategy === 'fbp' ? matchedClickId : null,
+      fbpAttempted,
+      fbpResult,
+      fbpClickId,
       // Email strategy tracking (for future use in Story 008b)
       emailAttempted: false, // TODO: Story 008b
       emailResult: undefined,
@@ -177,14 +174,19 @@ export async function matchConversion(input: ConversionInput): Promise<Conversio
     },
   });
 
-  // STEP 6: Enqueue to SQS capi-dispatch (Story 009)
-  // For now, just log that it would be enqueued
+  // STEP 6: Log match result
+  if (matchedClickId) {
+    console.log(`✓ Match successful: conversion_id=${conversion.id} strategy=${matchStrategy} matched_click_id=${matchedClickId}`);
+  } else {
+    console.log(`⚠ No match found: conversion_id=${conversion.id}`);
+  }
+
+  // STEP 7: Ready for SQS dispatch (Story 009)
   // TODO: Integrate with SQS in Story 009
   const capiPayloadEnqueued = false;
-  console.log(`[MatchEngine] Conversion ${createdConversion.id} ready for CAPI dispatch via SQS`);
 
   return {
-    conversionId: createdConversion.id,
+    conversionId: conversion.id,
     webhookRawId,
     matchedClickId,
     matchStrategy: matchStrategy as 'fbc' | 'fbp' | 'unmatched',

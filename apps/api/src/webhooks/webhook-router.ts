@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { normalizeConversion } from './conversion-normalizer.js';
+import { matchConversion } from '../match-engine.js';
 
 /**
  * Generic webhook adapter interface.
@@ -206,7 +207,28 @@ export async function registerWebhookRoutes(app: FastifyInstance) {
         },
       });
 
-      // 7. Log para rastreabilidade (audit trail)
+      // 7. Execute Match Engine (Story 008) — attempt to match with Click
+      let matchResult;
+      try {
+        matchResult = await matchConversion({
+          tenantId,
+          gateway: gateway.toLowerCase() as 'hotmart' | 'kiwify' | 'stripe' | 'pagseguro' | 'perfectpay',
+          webhookRawId: webhookRaw.id,
+          event,
+        });
+      } catch (matchErr) {
+        app.log.warn(
+          {
+            webhookRawId: webhookRaw.id,
+            conversionId: conversion.id,
+            error: String(matchErr),
+          },
+          'Match Engine execution failed (non-blocking)'
+        );
+        // Don't fail webhook if matching fails — it's async and can be retried
+      }
+
+      // 8. Log para rastreabilidade (audit trail)
       app.log.info(
         {
           webhookRawId: webhookRaw.id,
@@ -215,18 +237,21 @@ export async function registerWebhookRoutes(app: FastifyInstance) {
           tenantId,
           eventId: event.eventId,
           eventType: event.eventType,
+          matchStrategy: matchResult?.matchStrategy,
+          matchedClickId: matchResult?.matchedClickId,
         },
-        'Webhook processed and normalized'
+        'Webhook processed and matched'
       );
 
-      // 8. Retornar 202 imediatamente (processamento assíncrono via Match Engine/SQS)
+      // 9. Retornar 202 imediatamente (processamento assíncrono via SQS)
       return reply.code(202).send({
         ok: true,
         webhookRawId: webhookRaw.id,
         conversionId: conversion.id,
+        matchLogId: matchResult?.matchLogId,
         eventId: event.eventId,
         gateway: event.gateway,
-        message: 'Webhook accepted for processing',
+        message: 'Webhook accepted and matched',
       });
     } catch (err) {
       app.log.error({
