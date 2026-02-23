@@ -33,9 +33,6 @@ ENV NODE_ENV=production
 # Copiar apenas o necessário do estágio de build
 COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
-# Sobrescrever .prisma com o client gerado corretamente (com engineType=library)
-# ATENÇÃO: deve vir DEPOIS do node_modules raiz para não ser sobrescrito
-COPY --from=builder /app/apps/api/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/apps/api/prisma ./prisma
 
 # Substituir o symlink do workspace @hub/shared por arquivos compilados reais
