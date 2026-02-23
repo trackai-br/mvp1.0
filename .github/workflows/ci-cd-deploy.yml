@@ -94,6 +94,9 @@ jobs:
       - name: Build shared package
         run: npm run build -w packages/shared
 
+      - name: Generate Prisma Client
+        run: cd apps/api && npx prisma generate
+
       - name: Build application
         run: npm run build
 
