@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
+import jwt from '@fastify/jwt';
 import {
   setupSessionCreateSchema,
   setupSessionStatusSchema,
@@ -27,6 +28,18 @@ async function bootstrap() {
 
   await app.register(cors, { origin: true });
   await app.register(sensible);
+  await app.register(jwt, {
+    secret: process.env.JWT_SECRET || 'dev-secret-change-in-production',
+  });
+
+  // Decorate app with authenticate hook for protected routes
+  (app as any).authenticate = async function(request: any, reply: any) {
+    try {
+      await request.jwtVerify();
+    } catch (err) {
+      reply.code(401).send({ message: 'Unauthorized' });
+    }
+  };
 
   app.get('/health', async (_request, reply) => {
     try {
