@@ -78,11 +78,18 @@ export class PagSeguroAdapter implements WebhookAdapter {
       productId = firstItem.id;
     }
 
-    // Extract name into first/last
-    const fullName = parsed.sender?.name || '';
-    const nameParts = fullName.split(' ');
-    const firstName = nameParts[0] || undefined;
-    const lastName = nameParts.slice(1).join(' ') || undefined;
+    // Extract name into first/last (PagSeguro sends as object with givenName/familyName)
+    const senderName = parsed.sender?.name;
+    let firstName: string | undefined;
+    let lastName: string | undefined;
+    if (typeof senderName === 'object' && senderName !== null) {
+      firstName = senderName.givenName || undefined;
+      lastName = senderName.familyName || undefined;
+    } else if (typeof senderName === 'string') {
+      const nameParts = senderName.split(' ');
+      firstName = nameParts[0] || undefined;
+      lastName = nameParts.slice(1).join(' ') || undefined;
+    }
 
     const event: NormalizedWebhookEvent = {
       gateway: 'pagseguro',
@@ -91,20 +98,26 @@ export class PagSeguroAdapter implements WebhookAdapter {
       amount,
       currency: parsed.currency || 'BRL',
       // --- 15 Meta CAPI Parameters ---
-      fbc: undefined, // PagSeguro doesn't send Meta IDs
-      fbp: undefined,
+      // Facebook IDs (NOT hashed)
+      fbc: parsed.fbc,
+      fbp: parsed.fbp,
+      // Contact info (HASHED in Story 008)
       customerEmail: parsed.sender?.email,
       customerPhone: parsed.sender?.phone
         ? `${parsed.sender.phone.areaCode}${parsed.sender.phone.number}`
         : undefined,
+      // Personal info (HASHED in Story 008)
       customerFirstName: firstName,
       customerLastName: lastName,
-      customerCity: parsed.shipping?.address?.city,
-      customerState: parsed.shipping?.address?.state,
-      customerCountry: parsed.shipping?.address?.country,
-      customerZipCode: parsed.shipping?.address?.postalCode,
-      customerDateOfBirth: undefined,
+      customerDateOfBirth: parsed.sender?.birth_date,
+      // Address (HASHED in Story 008)
+      customerCity: parsed.sender?.address?.city,
+      customerState: parsed.sender?.address?.state,
+      customerCountry: parsed.sender?.address?.country,
+      customerZipCode: parsed.sender?.address?.postalCode,
+      // External IDs (HASHED in Story 008)
       customerExternalId: parsed.reference, // PagSeguro reference
+      customerFacebookLoginId: undefined, // PagSeguro doesn't send Facebook Login ID
       // --- Legacy fields ---
       productId,
       productName,

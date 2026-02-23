@@ -46,8 +46,8 @@ export class HotmartAdapter implements WebhookAdapter {
     // Extract name into first/last (Hotmart sends full name)
     const fullName = parsed.buyer?.name || '';
     const nameParts = fullName.split(' ');
-    const firstName = nameParts[0] || undefined;
-    const lastName = nameParts.slice(1).join(' ') || undefined;
+    const firstName = nameParts[0] || parsed.buyer?.first_name || undefined;
+    const lastName = nameParts.slice(1).join(' ') || parsed.buyer?.last_name || undefined;
 
     // Extract 15 Meta CAPI parameters
     const event: NormalizedWebhookEvent = {
@@ -57,19 +57,25 @@ export class HotmartAdapter implements WebhookAdapter {
       amount: parsed.purchase?.full_price || parsed.purchase?.price,
       currency: parsed.purchase?.currency || 'BRL',
       // --- 15 Meta CAPI Parameters ---
-      fbc: parsed.custom_fields?.fbc, // FBC from custom fields
-      fbp: parsed.custom_fields?.fbp, // FBP from custom fields
+      // Facebook IDs (NOT hashed)
+      fbc: parsed.fbc || parsed.custom_fields?.fbc,
+      fbp: parsed.fbp || parsed.custom_fields?.fbp,
+      // Contact info (HASHED in Story 008)
       customerEmail: parsed.buyer?.email,
       customerPhone: parsed.buyer?.phone,
+      customerPhoneArea: parsed.buyer?.phone?.substring(0, 2), // For Story 008 formatting
+      // Personal info (HASHED in Story 008)
       customerFirstName: firstName,
       customerLastName: lastName,
-      customerCity: parsed.buyer?.city,
-      customerState: parsed.buyer?.state,
-      customerCountry: parsed.buyer?.country,
-      customerZipCode: parsed.buyer?.zipcode,
-      customerDateOfBirth: undefined, // Hotmart doesn't send this
-      customerExternalId: parsed.id, // Use purchase ID as external ID
-      customerPhoneArea: parsed.buyer?.phone?.substring(0, 2), // For Story 008 formatting
+      customerDateOfBirth: parsed.buyer?.birth_date || parsed.buyer?.date_of_birth,
+      // Address (HASHED in Story 008)
+      customerCity: parsed.buyer?.address?.city,
+      customerState: parsed.buyer?.address?.state,
+      customerCountry: parsed.buyer?.address?.country,
+      customerZipCode: parsed.buyer?.address?.zip_code,
+      // External IDs (HASHED in Story 008)
+      customerExternalId: parsed.buyer?.external_id || parsed.id, // Use external_id if available, else purchase ID
+      customerFacebookLoginId: undefined, // Hotmart doesn't send Facebook Login ID
       // --- Legacy fields (for backward compat) ---
       productId: parsed.product?.id,
       productName: parsed.product?.name,

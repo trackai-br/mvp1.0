@@ -51,8 +51,8 @@ export class KiwifyAdapter implements WebhookAdapter {
     // Extract name into first/last
     const fullName = customer.name || '';
     const nameParts = fullName.split(' ');
-    const firstName = nameParts[0] || undefined;
-    const lastName = nameParts.slice(1).join(' ') || undefined;
+    const firstName = nameParts[0] || customer.first_name || undefined;
+    const lastName = nameParts.slice(1).join(' ') || customer.last_name || undefined;
 
     const event: NormalizedWebhookEvent = {
       gateway: 'kiwify',
@@ -61,18 +61,24 @@ export class KiwifyAdapter implements WebhookAdapter {
       amount: data.amount,
       currency: data.currency || 'BRL',
       // --- 15 Meta CAPI Parameters ---
-      fbc: data.custom_fields?.fbc,
-      fbp: data.custom_fields?.fbp,
+      // Facebook IDs (NOT hashed)
+      fbc: data.fbc || data.custom_fields?.fbc,
+      fbp: data.fbp || data.custom_fields?.fbp,
+      // Contact info (HASHED in Story 008)
       customerEmail: customer.email,
       customerPhone: customer.phone,
+      // Personal info (HASHED in Story 008)
       customerFirstName: firstName,
       customerLastName: lastName,
-      customerCity: undefined, // Kiwify doesn't send address
-      customerState: undefined,
-      customerCountry: undefined,
-      customerZipCode: undefined,
-      customerDateOfBirth: undefined,
+      customerDateOfBirth: customer.birth_date || customer.date_of_birth,
+      // Address (HASHED in Story 008)
+      customerCity: customer.address?.city,
+      customerState: customer.address?.state,
+      customerCountry: customer.address?.country,
+      customerZipCode: customer.address?.zip_code,
+      // External IDs (HASHED in Story 008)
       customerExternalId: parsed.id, // Use order ID
+      customerFacebookLoginId: undefined, // Kiwify doesn't send this
       // --- Legacy fields ---
       productId: data.product?.id,
       productName: data.product?.name,

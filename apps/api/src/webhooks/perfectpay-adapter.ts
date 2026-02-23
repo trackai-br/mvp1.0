@@ -46,11 +46,15 @@ export class PerfectPayAdapter implements WebhookAdapter {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parsed = body as any;
 
-    // Extract name into first/last
-    const fullName = parsed.customer?.full_name || '';
-    const nameParts = fullName.split(' ');
-    const firstName = nameParts[0] || undefined;
-    const lastName = nameParts.slice(1).join(' ') || undefined;
+    // Extract name into first/last (try full_name first, then separate fields)
+    let firstName = parsed.customer?.first_name;
+    let lastName = parsed.customer?.last_name;
+    if (!firstName && !lastName) {
+      const fullName = parsed.customer?.full_name || '';
+      const nameParts = fullName.split(' ');
+      firstName = nameParts[0] || undefined;
+      lastName = nameParts.slice(1).join(' ') || undefined;
+    }
 
     // Extract phone with area code if present
     let phone: string | undefined;
@@ -78,22 +82,24 @@ export class PerfectPayAdapter implements WebhookAdapter {
       amount: parsed.amount,
       currency: parsed.currency || 'BRL',
       // --- 15 Meta CAPI Parameters ---
-      fbc: undefined, // PerfectPay doesn't send Meta IDs
-      fbp: undefined,
+      // Facebook IDs (NOT hashed)
+      fbc: parsed.fbc || parsed.customer?.custom_fields?.fbc,
+      fbp: parsed.fbp || parsed.customer?.custom_fields?.fbp,
+      // Contact info (HASHED in Story 008)
       customerEmail: parsed.customer?.email,
       customerPhone: phone,
-      customerPhoneArea: parsed.customer?.phone
-        ? parsed.customer.phone.substring(0, 2)
-        : undefined,
+      // Personal info (HASHED in Story 008)
       customerFirstName: firstName,
       customerLastName: lastName,
-      customerCity: parsed.customer?.city,
-      customerState: parsed.customer?.state,
-      customerCountry: parsed.customer?.country,
-      customerZipCode: parsed.customer?.zip_code,
-      customerDateOfBirth: parsed.customer?.birthdate, // YYYY-MM-DD format (only from PerfectPay!)
-      customerExternalId: parsed.order_id, // Use order ID as external ID
-      customerFacebookLoginId: undefined,
+      customerDateOfBirth: parsed.customer?.date_of_birth || parsed.customer?.birthdate, // YYYY-MM-DD
+      // Address (HASHED in Story 008)
+      customerCity: parsed.customer?.address_city,
+      customerState: parsed.customer?.address_state,
+      customerCountry: parsed.customer?.address_country,
+      customerZipCode: parsed.customer?.address_zipcode,
+      // External IDs (HASHED in Story 008)
+      customerExternalId: parsed.customer?.external_id || parsed.order_id,
+      customerFacebookLoginId: parsed.customer?.facebook_login_id,
       // --- Legacy fields ---
       productId: parsed.product_id,
       productName: undefined,

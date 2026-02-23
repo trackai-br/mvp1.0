@@ -75,6 +75,13 @@ export class StripeAdapter implements WebhookAdapter {
     // Convert amount from cents to base unit
     const amount = data.amount ? data.amount / 100 : undefined;
 
+    // Extract name into first/last from billing details
+    const billingDetails = extractStripeBillingDetails(data);
+    const fullName = (billingDetails?.name as string) || '';
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || undefined;
+    const lastName = nameParts.slice(1).join(' ') || undefined;
+
     const event: NormalizedWebhookEvent = {
       gateway: 'stripe',
       eventId: parsed.id,
@@ -82,18 +89,24 @@ export class StripeAdapter implements WebhookAdapter {
       amount,
       currency: data.currency?.toUpperCase(),
       // --- 15 Meta CAPI Parameters ---
-      fbc: data.metadata?.fbc, // Via metadata
-      fbp: data.metadata?.fbp, // Via metadata
+      // Facebook IDs (NOT hashed)
+      fbc: data.metadata?.fbc,
+      fbp: data.metadata?.fbp,
+      // Contact info (HASHED in Story 008)
       customerEmail: extractStripeEmail(data),
-      customerPhone: undefined, // Stripe doesn't send phone in webhook
-      customerFirstName: undefined,
-      customerLastName: undefined,
-      customerCity: undefined,
-      customerState: undefined,
-      customerCountry: undefined,
-      customerZipCode: undefined,
-      customerDateOfBirth: undefined,
+      customerPhone: (billingDetails?.phone as string | undefined),
+      // Personal info (HASHED in Story 008)
+      customerFirstName: firstName,
+      customerLastName: lastName,
+      customerDateOfBirth: (data.metadata?.date_of_birth as string | undefined) || (data.metadata?.dateOfBirth as string | undefined),
+      // Address (HASHED in Story 008)
+      customerCity: ((billingDetails?.address as Record<string, unknown>)?.city as string | undefined),
+      customerState: ((billingDetails?.address as Record<string, unknown>)?.state as string | undefined),
+      customerCountry: ((billingDetails?.address as Record<string, unknown>)?.country as string | undefined),
+      customerZipCode: ((billingDetails?.address as Record<string, unknown>)?.postal_code as string | undefined),
+      // External IDs (HASHED in Story 008)
       customerExternalId: data.customer, // Stripe customer ID
+      customerFacebookLoginId: undefined, // Stripe doesn't send Facebook Login ID
       // --- Legacy fields ---
       productId: undefined,
       productName: undefined,
@@ -105,6 +118,29 @@ export class StripeAdapter implements WebhookAdapter {
 
     return event;
   }
+}
+
+/**
+ * Extract billing details from Stripe payment intent or charge object.
+ */
+function extractStripeBillingDetails(
+  data: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  // Try billing details from charges array first
+  const charges = data.charges as Record<string, unknown> | undefined;
+  if (charges && Array.isArray(charges.data)) {
+    for (const charge of charges.data) {
+      const chargeObj = charge as Record<string, unknown>;
+      const billingDetails = chargeObj.billing_details as
+        | Record<string, unknown>
+        | undefined;
+      if (billingDetails) {
+        return billingDetails;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 /**

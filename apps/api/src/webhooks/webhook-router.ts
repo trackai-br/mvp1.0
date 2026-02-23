@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { normalizeConversion } from './conversion-normalizer.js';
 
 /**
  * Generic webhook adapter interface.
@@ -110,21 +111,119 @@ export async function registerWebhookRoutes(app: FastifyInstance) {
     const { gateway, tenantId } = request.params as any;
 
     try {
+      // Import Prisma for database operations
+      const { prisma } = await import('../db.js');
+
       // Get the appropriate adapter
       const adapter = getWebhookAdapter(gateway);
 
-      // For now, we just parse and return the event
-      // In a real implementation, this would:
-      // 1. Fetch tenant's webhook secret
-      // 2. Validate signature
-      // 3. Persist to database
-      // 4. Enqueue to processing pipeline
+      // 1. Buscar tenant e webhook secret (temporariamente usar default para MVP)
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
 
+      if (!tenant) {
+        return reply.code(404).send({ error: 'tenant_not_found' });
+      }
+
+      // For MVP: use a default secret. In production, fetch from SetupSession or Tenant.webhookSecret
+      // TODO: After schema migration, use: tenant.webhookSecret
+      const webhookSecret = process.env[`WEBHOOK_SECRET_${gateway.toUpperCase()}`] || 'dev-secret-change-in-production';
+
+      // 2. Validar assinatura HMAC
+      const signature = request.headers[`x-${gateway.toLowerCase()}-signature`] as string | undefined;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const rawBody = (request as any).rawBody as string || JSON.stringify(request.body);
+
+      adapter.validateSignature(rawBody, signature, webhookSecret);
+
+      // 3. Parsear e normalizar evento
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const event = adapter.parseEvent(request.body as any);
 
+      // 4. Persistir WebhookRaw com upsert (deduplicação via UNIQUE constraint)
+      const webhookRaw = await prisma.webhookRaw.upsert({
+        where: {
+          tenantId_gateway_gatewayEventId: {
+            tenantId,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            gateway: gateway.toLowerCase() as any,
+            gatewayEventId: event.eventId,
+          },
+        },
+        update: {}, // Se já existe, não faz nada (deduplicação)
+        create: {
+          tenantId,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          gateway: gateway.toLowerCase() as any,
+          gatewayEventId: event.eventId,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          rawPayload: request.body as any,
+          eventType: event.eventType,
+        },
+      });
+
+      // 5. Normalize and hash PII data for Meta CAPI (Story 008)
+      const normalized = normalizeConversion(event);
+
+      // 6. Persistir Conversion com dados normalizados e hasheados
+      const conversion = await prisma.conversion.upsert({
+        where: {
+          tenantId_gateway_gatewayEventId: {
+            tenantId,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            gateway: gateway.toLowerCase() as any,
+            gatewayEventId: event.eventId,
+          },
+        },
+        update: {}, // Se já existe, não faz nada (deduplicação)
+        create: {
+          tenantId,
+          webhookRawId: webhookRaw.id,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          gateway: gateway.toLowerCase() as any,
+          gatewayEventId: event.eventId,
+          amount: normalized.amount,
+          currency: normalized.currency,
+          // Facebook IDs (NOT hashed)
+          fbc: normalized.fbc,
+          fbp: normalized.fbp,
+          // Contact info (HASHED)
+          emailHash: normalized.emailHash,
+          phoneHash: normalized.phoneHash,
+          // Personal info (HASHED)
+          firstNameHash: normalized.firstNameHash,
+          lastNameHash: normalized.lastNameHash,
+          dateOfBirthHash: normalized.dateOfBirthHash,
+          // Address (HASHED)
+          cityHash: normalized.cityHash,
+          stateHash: normalized.stateHash,
+          countryCode: normalized.countryCode,
+          zipCodeHash: normalized.zipCodeHash,
+          // External IDs (HASHED)
+          externalIdHash: normalized.externalIdHash,
+          facebookLoginId: normalized.facebookLoginIdHash,
+        },
+      });
+
+      // 7. Log para rastreabilidade (audit trail)
+      app.log.info(
+        {
+          webhookRawId: webhookRaw.id,
+          conversionId: conversion.id,
+          gateway,
+          tenantId,
+          eventId: event.eventId,
+          eventType: event.eventType,
+        },
+        'Webhook processed and normalized'
+      );
+
+      // 8. Retornar 202 imediatamente (processamento assíncrono via Match Engine/SQS)
       return reply.code(202).send({
         ok: true,
+        webhookRawId: webhookRaw.id,
+        conversionId: conversion.id,
         eventId: event.eventId,
         gateway: event.gateway,
         message: 'Webhook accepted for processing',
@@ -138,8 +237,12 @@ export async function registerWebhookRoutes(app: FastifyInstance) {
 
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
 
-      if (errorMessage.includes('signature')) {
+      if (errorMessage.includes('signature') || errorMessage.includes('Invalid')) {
         return reply.code(401).send({ error: 'Invalid signature' });
+      }
+
+      if (errorMessage.includes('tenant_not_found')) {
+        return reply.code(404).send({ error: 'tenant_not_found' });
       }
 
       return reply.code(400).send({ error: 'Webhook processing failed' });

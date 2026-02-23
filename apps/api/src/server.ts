@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
@@ -17,6 +20,12 @@ import { handlePerfectPayWebhook } from './perfectpay-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
 import { register as registerAnalyticsRoutes } from './routes/analytics.js';
 import { prisma } from './db.js';
+
+// Load environment variables from .env.local if it exists
+const envPath = path.resolve(process.cwd(), '../../infra/secrets/.env.local');
+if (fs.existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+}
 
 type PerfectPayWebhookParams = {
   sessionId: string;
