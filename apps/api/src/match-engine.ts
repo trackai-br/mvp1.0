@@ -1,4 +1,5 @@
 import { prisma } from './db.js';
+import { enqueueConversionForCapi } from './services/capi-enqueue-service.js';
 import type { NormalizedWebhookEvent } from './webhooks/webhook-router.js';
 import type { $Enums } from '.prisma/client';
 
@@ -181,9 +182,30 @@ export async function matchConversion(input: ConversionInput): Promise<Conversio
     console.log(`⚠ No match found: conversion_id=${conversion.id}`);
   }
 
-  // STEP 7: Ready for SQS dispatch (Story 009)
-  // TODO: Integrate with SQS in Story 009
-  const capiPayloadEnqueued = false;
+  // STEP 7: Enqueue to SQS for Meta CAPI dispatch (Story 009)
+  let capiPayloadEnqueued = false;
+  try {
+    const enqueueResult = await enqueueConversionForCapi({
+      conversionId: conversion.id,
+      tenantId,
+    });
+
+    capiPayloadEnqueued = enqueueResult.status === 'enqueued';
+    if (capiPayloadEnqueued) {
+      console.log(
+        `✓ Conversion enqueued for CAPI dispatch: conversion_id=${conversion.id} message_id=${enqueueResult.messageId}`
+      );
+    } else {
+      console.warn(
+        `⚠ Failed to enqueue conversion: conversion_id=${conversion.id} error=${enqueueResult.error}`
+      );
+    }
+  } catch (enqueueErr) {
+    // Non-blocking: log error but don't fail the entire match operation
+    console.error(
+      `Error enqueuing conversion for CAPI: conversion_id=${conversion.id} error=${String(enqueueErr)}`
+    );
+  }
 
   return {
     conversionId: conversion.id,
