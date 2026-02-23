@@ -169,7 +169,7 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
-          container-name: hub-api
+          container-name: hub-server-side-tracking-api
           image: ${{ steps.image.outputs.image-uri }}
 
       - name: Register new task definition
