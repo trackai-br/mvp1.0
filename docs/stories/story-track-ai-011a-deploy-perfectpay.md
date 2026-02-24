@@ -2,7 +2,7 @@
 
 **Story ID:** 011a
 **Epic:** EPIC-011 — MVP Launch & Multi-Gateway Integration
-**Status:** Ready
+**Status:** Done
 
 ## Contexto
 
@@ -73,7 +73,12 @@ Story 005 (PerfectPay webhook com HMAC-SHA256) foi implementada e validada com s
 - **[2026-02-24 10:17]** @devops (Gage): Identificado bloqueio em Quality Gates (Story 008 test failure). Fixado async test em match-engine.test.ts.
 - **[2026-02-24 10:18]** Test fix validated locally (10/10 passing). Ambos commits pushed.
 - **[2026-02-24 10:18]** Deploy workflow em execução via GitHub Actions (50 min estimado).
-- **[DEPLOYMENT]** Status: EN ROUTE (Quality → Build → Deploy phases)
+- **[2026-02-24 14:07]** @devops (Gage): Deployment completo e validado!
+  - ✅ ECR image: sha256:a0145d9c8216f18f0ae6317ff8c0bf5004cb7c57f6707b4c9945c29dabf07e34
+  - ✅ ECS service: 1/1 running
+  - ✅ ALB health: HTTP 200 OK (db connected)
+  - ✅ Endpoint: /health returns {status: ok, db: connected}
+  - Story 011a marked as DONE
 
 ---
 

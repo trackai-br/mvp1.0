@@ -105,9 +105,7 @@ export function getWebhookAdapter(gateway: string): WebhookAdapter {
 export async function registerWebhookRoutes(app: FastifyInstance) {
   app.post<{
     Params: { gateway: string; tenantId: string };
-  }>('/api/v1/webhooks/:gateway/:tenantId', {
-    config: { rawBody: true },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
+  }>('/api/v1/webhooks/:gateway/:tenantId', async (request: FastifyRequest, reply: FastifyReply) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { gateway, tenantId } = request.params as any;
 
