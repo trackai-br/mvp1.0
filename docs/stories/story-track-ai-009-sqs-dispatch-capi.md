@@ -1,6 +1,6 @@
 # Story Track AI 009 – SQS Dispatch to Meta CAPI (Conversions API)
 
-## Status: InReview
+## Status: Done
 
 **Approved by @po (Pax)** - 2026-02-21
 - Validation Score: 9/10 ✅
