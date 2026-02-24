@@ -36,9 +36,10 @@ describe('Match Engine', () => {
       },
     };
 
-    // Just verify function accepts the shape (will fail on DB if called,
-    // but that's acceptable for unit test without mocking entire Prisma)
-    expect(typeof matchConversion(input)).toBe('object');
+    // Just verify function is callable and returns a Promise
+    // (will fail on DB if called, but that's acceptable for unit test)
+    expect(typeof matchConversion).toBe('function');
+    expect(matchConversion(input)).toBeInstanceOf(Promise);
   });
 
   it('deve exportar tipos ConversionInput e ConversionOutput', async () => {
