@@ -44,14 +44,17 @@ jobs:
 
       - name: Download current task definition
         run: |
-          aws ecs describe-task-definition --task-definition ${{ env.ECS_SERVICE }} --query taskDefinition > task-definition.json
+          # Busca o ARN da Task Definition que o serviço está usando no momento
+          TASK_DEFINITION_ARN=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }} --query "services[0].taskDefinition" --output text)
+          # Baixa a definição completa usando o ARN
+          aws ecs describe-task-definition --task-definition $TASK_DEFINITION_ARN --query taskDefinition > task-definition.json
 
       - name: Fill in the new image ID in the Amazon ECS task definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
-          container-name: ${{ env.CONTAINER_NAME }}
+          containame: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.build-image.outputs.image }}
 
       - name: Deploy Amazon ECS task definition
