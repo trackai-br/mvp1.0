@@ -70,6 +70,10 @@ Story 005 (PerfectPay webhook com HMAC-SHA256) foi implementada e validada com s
 
 - Story 011a criada por @sm (River) — 2026-02-24. Source: EPIC-011 Phase 1.
 - Pronta para @devops execução.
+- **[2026-02-24 10:17]** @devops (Gage): Identificado bloqueio em Quality Gates (Story 008 test failure). Fixado async test em match-engine.test.ts.
+- **[2026-02-24 10:18]** Test fix validated locally (10/10 passing). Ambos commits pushed.
+- **[2026-02-24 10:18]** Deploy workflow em execução via GitHub Actions (50 min estimado).
+- **[DEPLOYMENT]** Status: EN ROUTE (Quality → Build → Deploy phases)
 
 ---
 
