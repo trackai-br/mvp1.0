@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
 import jwt from '@fastify/jwt';
+import rawBody from 'fastify-raw-body';
 import {
   setupSessionCreateSchema,
   setupSessionStatusSchema,
@@ -19,6 +20,7 @@ import { handleCheckoutIngest } from './checkout-handler.js';
 import { handlePerfectPayWebhook } from './perfectpay-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
 import { register as registerAnalyticsRoutes } from './routes/analytics.js';
+import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js';
 import { prisma } from './db.js';
 
 // Load environment variables from .env.local if it exists
@@ -34,6 +36,9 @@ type PerfectPayWebhookParams = {
 
 async function bootstrap() {
   const app = Fastify({ logger: true });
+
+  // Register raw body plugin BEFORE other plugins
+  await app.register(rawBody, { global: false, runFirst: true });
 
   await app.register(cors, { origin: true });
   await app.register(sensible);
@@ -51,7 +56,7 @@ async function bootstrap() {
     }
   };
 
-  app.get('/health', async (_request, reply) => {
+  app.get('/api/v1/health', async (_request, reply) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
       return reply.send({ status: 'ok', db: 'connected', project: 'Track AI' });
@@ -172,14 +177,12 @@ async function bootstrap() {
   });
 
   // Webhook de conversão PerfectPay (tenant já provisionado)
-  app.post('/api/v1/webhooks/perfectpay/:tenantId', {
-    config: { rawBody: true },
-  }, async (request, reply) => {
+  app.post('/api/v1/webhooks/perfectpay/:tenantId', async (request, reply) => {
     const { tenantId } = request.params as { tenantId: string };
     const signature = request.headers['x-perfectpay-signature'] as string | undefined;
 
-    // raw body: usa JSON.stringify como aproximação MVP (limitação: key ordering)
-    const rawBody = JSON.stringify(request.body);
+    // Get raw body from plugin (preserves original formatting for HMAC validation)
+    const rawBody = (request as { rawBody: string }).rawBody;
 
     const parsed = perfectPayWebhookSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -227,6 +230,9 @@ async function bootstrap() {
 
   // Register analytics routes (Story 010: Dashboard Operacional)
   await registerAnalyticsRoutes(app);
+
+  // Start analytics refresh job (Story 011g-b: 5 min interval)
+  startAnalyticsRefreshJob();
 
   await app.listen({ port: 3001, host: '0.0.0.0' });
 }
