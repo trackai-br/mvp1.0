@@ -276,8 +276,14 @@ async function getDispatchAttempts(request: FastifyRequest, reply: FastifyReply)
 
     // await logAudit(tenantId, (request as any).user.id, 'GET', '/analytics/dispatch-attempts', { status });
 
+    // Sanitize PII from error messages
+    const sanitizedAttempts = attempts.map((attempt: any) => ({
+      ...attempt,
+      error: attempt.error ? '[REDACTED - see server logs]' : undefined,
+    }));
+
     return reply.send({
-      data: attempts,
+      data: sanitizedAttempts,
       pagination: {
         page: pageSchema.page,
         limit: pageSchema.limit,
@@ -422,19 +428,25 @@ async function exportData(request: FastifyRequest, reply: FastifyReply) {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (format === 'json') {
-      reply.header('Content-Type', 'application/json');
-      reply.header('Content-Disposition', `attachment; filename="analytics-${new Date().toISOString()}.json"`);
-      return reply.send(events);
-    }
-
-    // CSV format
     if (events.length === 0) {
       return reply.code(204).send();
     }
 
-    const headers = Object.keys(events[0]).join(',');
-    const rows = events.map((e: any) => Object.values(e).map((v: any) =>
+    // Sanitize PII from errors and apply maskPII
+    const sanitizedEvents = events.map((e: any) => maskPII({
+      ...e,
+      error: e.error ? '[REDACTED - see server logs]' : undefined,
+    }));
+
+    if (format === 'json') {
+      reply.header('Content-Type', 'application/json');
+      reply.header('Content-Disposition', `attachment; filename="analytics-${new Date().toISOString()}.json"`);
+      return reply.send(sanitizedEvents);
+    }
+
+    // CSV format
+    const headers = Object.keys(sanitizedEvents[0]).join(',');
+    const rows = sanitizedEvents.map((e: any) => Object.values(e).map((v: any) =>
       typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v
     ).join(','));
 

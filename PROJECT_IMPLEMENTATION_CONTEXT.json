@@ -1,0 +1,1150 @@
+{
+  "project": {
+    "name": "Hub Server-Side Tracking",
+    "description": "SaaS multi-tenant para server-side tracking de Meta Ads. Intermediário entre gateways de pagamento e Meta Conversions API (CAPI) com foco em alto match rate e deduplicação robusta.",
+    "type": "SaaS",
+    "status": "In Development",
+    "stack": {
+      "backend": "Node.js 18+, Fastify 5, TypeScript 5.9",
+      "frontend": "Next.js 16, React 19, TanStack Query, React Hook Form",
+      "database": "PostgreSQL (Supabase), Prisma 7",
+      "cache": "Redis (optional)",
+      "queue": "SQS + DLQ",
+      "infrastructure": "AWS (API Gateway, WAF, ECS Fargate, CloudWatch)"
+    }
+  },
+  "backend": {
+    "overview": "API Fastify com rotas para tracking, webhooks, setup e analytics",
+    "port": 3001,
+    "endpoints": {
+      "tracking": {
+        "POST /api/v1/track/click": {
+          "description": "Ingere cliques de ads Meta",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-004",
+          "requires": "Header x-tenant-id",
+          "payload_schema": "clickIngestSchema",
+          "handler": "click-handler.ts",
+          "behavior": [
+            "Recebe fbclid, fbc, fbp, UTMs, IP, userAgent",
+            "Persiste em Click table com indexes (tenantId, fbc) e (tenantId, fbclid)",
+            "Usado para matching posterior com conversões"
+          ]
+        },
+        "POST /api/v1/track/pageview": {
+          "description": "Rastreia pageviews",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-006",
+          "requires": "Header x-tenant-id",
+          "handler": "pageview-handler.ts",
+          "payload": {
+            "url": "string (required)",
+            "referrer": "string (optional)",
+            "title": "string",
+            "utmSource": "string",
+            "utmMedium": "string",
+            "utmCampaign": "string",
+            "utmContent": "string",
+            "utmTerm": "string",
+            "fbclid": "string",
+            "fbc": "string",
+            "fbp": "string"
+          }
+        },
+        "POST /api/v1/track/initiate_checkout": {
+          "description": "Rastreia checkout iniciado",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-006",
+          "requires": "Header x-tenant-id",
+          "handler": "checkout-handler.ts",
+          "payload": {
+            "cartValue": "number (optional)",
+            "currency": "string (default: BRL)",
+            "cartItems": "JSON (optional)",
+            "fbclid": "string",
+            "fbc": "string",
+            "fbp": "string"
+          }
+        }
+      },
+      "webhooks": {
+        "POST /api/v1/webhooks/hotmart": {
+          "description": "Webhook de conversões Hotmart",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-007",
+          "external_integration": "Hotmart",
+          "adapter": "hotmart-adapter.ts",
+          "features": [
+            "Validação de assinatura HMAC-SHA256",
+            "Parsing e normalização de payload",
+            "Extração de 15 parâmetros Meta CAPI",
+            "Persistência em WebhookRaw e processamento assíncrono"
+          ]
+        },
+        "POST /api/v1/webhooks/kiwify": {
+          "description": "Webhook de conversões Kiwify",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-007",
+          "external_integration": "Kiwify",
+          "adapter": "kiwify-adapter.ts",
+          "features": [
+            "Validação de assinatura",
+            "Mapping de campos customizados"
+          ]
+        },
+        "POST /api/v1/webhooks/stripe": {
+          "description": "Webhook de conversões Stripe",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-007",
+          "external_integration": "Stripe",
+          "adapter": "stripe-adapter.ts",
+          "features": [
+            "Validação de assinatura Stripe",
+            "Tratamento de charge.succeeded"
+          ]
+        },
+        "POST /api/v1/webhooks/pagseguro": {
+          "description": "Webhook de conversões PagSeguro",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-007",
+          "external_integration": "PagSeguro",
+          "adapter": "pagseguro-adapter.ts",
+          "features": [
+            "Validação de assinatura PagSeguro",
+            "Tratamento de charge confirmada"
+          ]
+        },
+        "POST /api/v1/webhooks/perfectpay/:tenantId": {
+          "description": "Webhook de conversões PerfectPay (tenant provisionado)",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-005",
+          "external_integration": "PerfectPay",
+          "adapter": "perfectpay-adapter.ts",
+          "security": {
+            "method": "HMAC-SHA256",
+            "header": "x-perfectpay-signature",
+            "validation": "timing-safe comparison"
+          },
+          "features": [
+            "Validação HMAC-SHA256 de webhook",
+            "Extração de dados do cliente",
+            "Hashing de PII antes de persistir (SHA-256)",
+            "Conformidade LGPD"
+          ]
+        },
+        "POST /api/v1/webhooks/perfectpay/:sessionId/:token": {
+          "description": "Webhook de setup session PerfectPay (wizard)",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-001",
+          "purpose": "Validação de credenciais no onboarding"
+        }
+      },
+      "setup_and_onboarding": {
+        "POST /api/v1/setup/sessions": {
+          "description": "Cria nova sessão de setup/wizard",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-001",
+          "payload_schema": "setupSessionCreateSchema",
+          "handler": "setup-store.ts",
+          "returns": {
+            "id": "string (uuid)",
+            "projectName": "string",
+            "state": "string",
+            "webhookToken": "string (for validation)"
+          }
+        },
+        "POST /api/v1/setup/sessions/:id/validate": {
+          "description": "Executa validações na sessão de setup",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-001",
+          "validates": [
+            "Credenciais de gateways",
+            "Token Meta CAPI",
+            "Presença de pixel"
+          ]
+        },
+        "GET /api/v1/setup/sessions/:id/status": {
+          "description": "Retorna status da sessão de setup",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-001"
+        }
+      },
+      "analytics": {
+        "GET /api/v1/analytics/events": {
+          "description": "Retorna eventos de conversão com filtros",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-010",
+          "filters": [
+            "tenantId (required)",
+            "gateway",
+            "sentToCAPI",
+            "matchStrategy",
+            "dateRange"
+          ],
+          "route_file": "routes/analytics.ts",
+          "requires_jwt": true
+        },
+        "GET /api/v1/analytics/match-stats": {
+          "description": "Estatísticas de match rate por tenant",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-010",
+          "returns": {
+            "total": "number",
+            "matched": "number",
+            "matchRate": "percentage",
+            "byStrategy": "array of {strategy, count, percentage}"
+          }
+        },
+        "GET /api/v1/analytics/dispatch-failures": {
+          "description": "Monitora falhas de envio para Meta CAPI",
+          "implementation_status": "DONE",
+          "story": "story-track-ai-010",
+          "filters": [
+            "tenantId",
+            "timeWindow"
+          ]
+        }
+      }
+    },
+    "core_services": {
+      "match_engine": {
+        "file": "match-engine.ts",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-008",
+        "description": "Engine de matching entre cliques e conversões",
+        "strategy": "Hybrid deterministic-first + scoring",
+        "matching_order": [
+          {
+            "strategy": "fbc",
+            "description": "FBC (Facebook Container ID) matching",
+            "window": "72 hours",
+            "confidence": "highest"
+          },
+          {
+            "strategy": "fbp",
+            "description": "FBP (Facebook Pixel ID) matching",
+            "window": "72 hours",
+            "confidence": "high",
+            "fallback": "when FBC not found"
+          },
+          {
+            "strategy": "email",
+            "description": "Email hash matching",
+            "status": "TODO (Story 008b)",
+            "confidence": "medium"
+          }
+        ],
+        "outputs": [
+          "Conversion record com matchedClickId",
+          "MatchLog audit trail",
+          "Enqueue to SQS for CAPI dispatch"
+        ]
+      },
+      "meta_capi_client": {
+        "file": "services/meta-capi-client.ts",
+        "implementation_status": "IN_PROGRESS",
+        "story": "story-track-ai-009",
+        "external_integration": "Meta Conversions API v21",
+        "description": "Cliente para envio de eventos ao Meta CAPI",
+        "features": [
+          "Construção de payload com 15 parâmetros Meta CAPI",
+          "Retry logic com exponential backoff (5 tentativas)",
+          "Idempotência via event_id",
+          "Timeout: 3s por request",
+          "Logging de dispatch attempts"
+        ],
+        "meta_capi_parameters": {
+          "not_hashed": [
+            "fbc (Facebook Container ID)",
+            "fbp (Facebook Pixel ID)",
+            "country (ISO 2-letter code)"
+          ],
+          "hashed_sha256": [
+            "email (em)",
+            "phone (ph)",
+            "firstName (fn)",
+            "lastName (ln)",
+            "dateOfBirth (db)",
+            "city (ct)",
+            "state (st)",
+            "zipCode (zp)",
+            "externalId",
+            "facebookLoginId (hashed_maids)"
+          ]
+        }
+      },
+      "webhook_router": {
+        "file": "webhooks/webhook-router.ts",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-007",
+        "description": "Sistema generic de roteamento de webhooks",
+        "pattern": "Factory pattern com adapters",
+        "normalized_event_format": {
+          "gateway": "hotmart|kiwify|stripe|pagseguro|perfectpay",
+          "eventId": "string (para dedup)",
+          "eventType": "string",
+          "amount": "number",
+          "currency": "string",
+          "fbc": "string",
+          "fbp": "string",
+          "customerEmail": "string",
+          "customerPhone": "string",
+          "customerFirstName": "string",
+          "customerLastName": "string",
+          "customerDateOfBirth": "YYYY-MM-DD",
+          "customerCity": "string",
+          "customerState": "string",
+          "customerCountry": "string",
+          "customerZipCode": "string",
+          "customerExternalId": "string",
+          "customerFacebookLoginId": "string"
+        },
+        "gateway_adapters": [
+          "hotmart-adapter.ts",
+          "kiwify-adapter.ts",
+          "stripe-adapter.ts",
+          "pagseguro-adapter.ts",
+          "perfectpay-adapter.ts"
+        ]
+      },
+      "circuit_breaker": {
+        "file": "lib/circuit-breaker.ts",
+        "implementation_status": "DONE",
+        "description": "Proteção contra falhas em cascata",
+        "usage": "Para retries ao Meta CAPI"
+      }
+    },
+    "authentication": {
+      "method": "JWT (fastify-jwt)",
+      "protected_routes": [
+        "GET /api/v1/analytics/*"
+      ],
+      "implementation_status": "DONE",
+      "story": "story-track-ai-005"
+    },
+    "validation": {
+      "method": "Zod schemas compartilhados",
+      "location": "packages/shared/src/index.ts",
+      "schemas": [
+        "setupSessionCreateSchema",
+        "setupSessionStatusSchema",
+        "clickIngestSchema",
+        "perfectPayWebhookSchema"
+      ],
+      "implementation_status": "DONE"
+    }
+  },
+  "frontend": {
+    "overview": "Next.js 16 com React 19 para onboarding e dashboard",
+    "port": 3000,
+    "pages": {
+      "home_page": {
+        "path": "/",
+        "file": "apps/web/src/app/page.tsx",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-001",
+        "description": "Setup wizard 3-4 passos",
+        "components": [
+          "setupSessionCreateSchema validation",
+          "useMutation para criar sessão",
+          "TanStack Query para sync de estado"
+        ],
+        "steps": [
+          {
+            "number": 1,
+            "title": "Selecionar fonte de dados",
+            "sources": [
+              "Facebook Pixel",
+              "Google Ads",
+              "TikTok Pixel",
+              "Bing",
+              "Taboola",
+              "Outbrain",
+              "Google Analytics 4 (upgrade required)"
+            ]
+          },
+          {
+            "number": 2,
+            "title": "Selecionar integração de gateway",
+            "integrations": [
+              "Perfect Pay",
+              "Hotmart (upgrade required)",
+              "Kiwify (upgrade required)",
+              "Stripe (upgrade required)",
+              "Shopify (upgrade required)"
+            ]
+          },
+          {
+            "number": 3,
+            "title": "Validar conexões",
+            "validates": "Credenciais, tokens Meta, pixel"
+          },
+          {
+            "number": 4,
+            "title": "Gerar snippet de tracking",
+            "output": "Código pronto para copiar/colar"
+          }
+        ]
+      },
+      "dashboard_page": {
+        "path": "/dashboard",
+        "file": "apps/web/src/app/dashboard/page.tsx",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-010",
+        "description": "Dashboard operacional com análise de eventos",
+        "components": [
+          "KPI Cards (match rate, events processed, failures)",
+          "Match Rate Chart",
+          "Performance Chart",
+          "Events Table com filtering",
+          "Failures Monitor",
+          "Export Panel"
+        ]
+      }
+    },
+    "components": {
+      "kpi_cards": {
+        "file": "apps/web/src/components/dashboard/kpi-cards.tsx",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-010",
+        "metrics": [
+          "Total events processed",
+          "Match rate (%)",
+          "Events sent to CAPI",
+          "Failures count"
+        ]
+      },
+      "match_rate_chart": {
+        "file": "apps/web/src/components/dashboard/match-rate-chart.tsx",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-010",
+        "type": "Time-series chart",
+        "data_source": "GET /api/v1/analytics/match-stats"
+      },
+      "performance_chart": {
+        "file": "apps/web/src/components/dashboard/performance-chart.tsx",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-010",
+        "type": "Latency chart",
+        "metrics": [
+          "p95 latency",
+          "p99 latency",
+          "throughput"
+        ]
+      },
+      "events_table": {
+        "file": "apps/web/src/components/dashboard/events-table.tsx",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-010",
+        "columns": [
+          "Event ID",
+          "Gateway",
+          "Customer Email",
+          "Amount",
+          "Match Strategy",
+          "Sent to CAPI",
+          "Created At"
+        ],
+        "features": [
+          "Filtering by gateway",
+          "Sorting",
+          "Pagination"
+        ]
+      },
+      "failures_monitor": {
+        "file": "apps/web/src/components/dashboard/failures-monitor.tsx",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-010",
+        "displays": [
+          "Failed dispatch attempts",
+          "Error messages",
+          "Retry status"
+        ]
+      },
+      "export_panel": {
+        "file": "apps/web/src/components/dashboard/export-panel.tsx",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-010",
+        "formats": [
+          "CSV",
+          "JSON"
+        ]
+      },
+      "providers": {
+        "file": "apps/web/src/components/providers.tsx",
+        "purpose": "TanStack Query provider setup"
+      }
+    },
+    "api_routes": {
+      "next_setup_sessions": {
+        "path": "apps/web/src/app/api/v1/setup/sessions",
+        "implementation_status": "DONE",
+        "methods": ["POST"],
+        "purpose": "Criar sessão de setup"
+      },
+      "next_setup_status": {
+        "path": "apps/web/src/app/api/v1/setup/sessions/[id]/status",
+        "implementation_status": "DONE",
+        "methods": ["GET"],
+        "purpose": "Status da sessão"
+      },
+      "next_setup_validate": {
+        "path": "apps/web/src/app/api/v1/setup/sessions/[id]/validate",
+        "implementation_status": "DONE",
+        "methods": ["POST"],
+        "purpose": "Executar validações"
+      },
+      "next_perfectpay_webhook": {
+        "path": "apps/web/src/app/api/v1/webhooks/perfectpay/[sessionId]/[token]",
+        "implementation_status": "DONE",
+        "methods": ["POST"],
+        "purpose": "Webhook de validação no wizard"
+      }
+    },
+    "state_management": {
+      "library": "TanStack Query (React Query)",
+      "usage": [
+        "Cache de eventos",
+        "Sync de dashboard",
+        "Background refetch"
+      ]
+    },
+    "forms": {
+      "library": "React Hook Form + Zod",
+      "validation": "Client-side + server-side via schemas compartilhados"
+    }
+  },
+  "database": {
+    "provider": "PostgreSQL (Supabase)",
+    "orm": "Prisma 7",
+    "migration_tool": "Prisma Migrate",
+    "implementation_status": "DONE",
+    "models": {
+      "Tenant": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "slug": "String @unique",
+          "name": "String",
+          "status": "TenantStatus (provisioning | active | suspended | retired)",
+          "createdAt": "DateTime @default(now())",
+          "updatedAt": "DateTime @updatedAt"
+        },
+        "relations": {
+          "funnels": "Funnel[]",
+          "clicks": "Click[]",
+          "pageviews": "Pageview[]",
+          "checkouts": "Checkout[]",
+          "identities": "Identity[]",
+          "dedupeRegistry": "DedupeRegistry[]",
+          "dispatchAttempts": "DispatchAttempt[]",
+          "sessions": "SetupSession[]",
+          "webhookRaws": "WebhookRaw[]",
+          "conversions": "Conversion[]"
+        },
+        "purpose": "Unidade de multi-tenancy do sistema"
+      },
+      "Click": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String",
+          "fbclid": "String?",
+          "fbc": "String?",
+          "fbp": "String?",
+          "utmSource": "String?",
+          "utmMedium": "String?",
+          "utmCampaign": "String?",
+          "ip": "String?",
+          "userAgent": "String?",
+          "createdAt": "DateTime @default(now())"
+        },
+        "indexes": [
+          "@@index([tenantId, fbc])",
+          "@@index([tenantId, fbclid])"
+        ],
+        "purpose": "Armazena cliques de ads Meta para matching posterior"
+      },
+      "Pageview": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String",
+          "url": "String",
+          "referrer": "String?",
+          "title": "String?",
+          "utmSource": "String?",
+          "utmMedium": "String?",
+          "utmCampaign": "String?",
+          "utmContent": "String?",
+          "utmTerm": "String?",
+          "fbclid": "String?",
+          "fbc": "String?",
+          "fbp": "String?",
+          "ip": "String?",
+          "userAgent": "String?",
+          "createdAt": "DateTime @default(now())"
+        },
+        "indexes": [
+          "@@index([tenantId])"
+        ],
+        "purpose": "Rastreamento de pageviews"
+      },
+      "Checkout": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String",
+          "cartValue": "Float?",
+          "currency": "String @default(\"BRL\")",
+          "cartItems": "Json?",
+          "utmSource": "String?",
+          "utmMedium": "String?",
+          "utmCampaign": "String?",
+          "fbclid": "String?",
+          "fbc": "String?",
+          "fbp": "String?",
+          "ip": "String?",
+          "userAgent": "String?",
+          "createdAt": "DateTime @default(now())"
+        },
+        "indexes": [
+          "@@index([tenantId])"
+        ],
+        "purpose": "Rastreamento de checkouts iniciados"
+      },
+      "Identity": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String",
+          "emailHash": "String? (SHA-256)",
+          "phoneHash": "String? (SHA-256)",
+          "createdAt": "DateTime @default(now())"
+        },
+        "indexes": [
+          "@@index([tenantId, emailHash])",
+          "@@index([tenantId, phoneHash])"
+        ],
+        "purpose": "Armazena hashes de identidade para matching determinístico"
+      },
+      "DedupeRegistry": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String",
+          "eventId": "String",
+          "createdAt": "DateTime @default(now())"
+        },
+        "constraints": [
+          "@@unique([tenantId, eventId])"
+        ],
+        "purpose": "Controle de duplicatas de eventos CAPI (48h de proteção)"
+      },
+      "WebhookRaw": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String @db.Uuid",
+          "gateway": "GatewayType (hotmart | kiwify | stripe | pagseguro | perfectpay)",
+          "gatewayEventId": "String",
+          "rawPayload": "Json",
+          "eventType": "String?",
+          "createdAt": "DateTime @default(now())"
+        },
+        "constraints": [
+          "@@unique([tenantId, gateway, gatewayEventId])"
+        ],
+        "indexes": [
+          "@@index([tenantId, gateway, createdAt(sort: Desc)])",
+          "@@index([tenantId, eventType])"
+        ],
+        "purpose": "Audit trail de webhooks recebidos (Story 009)"
+      },
+      "Conversion": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String",
+          "webhookRawId": "String",
+          "gateway": "GatewayType",
+          "gatewayEventId": "String",
+          "amount": "Float?",
+          "currency": "String @default(\"BRL\")",
+          "meta_capi_parameters": {
+            "fbc": "String? (NOT hashed)",
+            "fbp": "String? (NOT hashed)",
+            "emailHash": "String? (SHA-256)",
+            "phoneHash": "String? (SHA-256)",
+            "firstNameHash": "String? (SHA-256)",
+            "lastNameHash": "String? (SHA-256)",
+            "dateOfBirthHash": "String? (SHA-256)",
+            "cityHash": "String? (SHA-256)",
+            "stateHash": "String? (SHA-256)",
+            "countryCode": "String? (ISO code, NOT hashed)",
+            "zipCodeHash": "String? (SHA-256)",
+            "externalIdHash": "String? (SHA-256)",
+            "facebookLoginId": "String? (SHA-256)"
+          },
+          "matching": {
+            "matchedClickId": "String? @db.Uuid",
+            "matchStrategy": "MatchStrategy (fbc | fbp | email | unmatched)?"
+          },
+          "dispatch": {
+            "sentToCAPI": "Boolean @default(false)",
+            "capiResponse": "Json?",
+            "capiRequestPayload": "Json?"
+          },
+          "metadata": {
+            "createdAt": "DateTime @default(now())",
+            "updatedAt": "DateTime @updatedAt"
+          }
+        },
+        "constraints": [
+          "@@unique([tenantId, gateway, gatewayEventId])"
+        ],
+        "indexes": [
+          "@@index([tenantId, fbc, createdAt(sort: Desc)])",
+          "@@index([tenantId, fbp, createdAt(sort: Desc)])",
+          "@@index([tenantId, emailHash, createdAt(sort: Desc)])",
+          "@@index([tenantId, sentToCAPI, createdAt])",
+          "@@index([tenantId, matchStrategy, createdAt])",
+          "@@index([tenantId, gateway, createdAt(sort: Desc)])"
+        ],
+        "purpose": "Conversões com todos os 15 parâmetros Meta CAPI e matching result"
+      },
+      "MatchLog": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "conversionId": "String",
+          "fbcAttempted": "Boolean @default(false)",
+          "fbcResult": "String? (\"found\" | \"not_found\" | \"expired\")",
+          "fbcClickId": "String?",
+          "fbpAttempted": "Boolean @default(false)",
+          "fbpResult": "String? (\"found\" | \"not_found\")",
+          "fbpClickId": "String?",
+          "emailAttempted": "Boolean @default(false)",
+          "emailResult": "String? (\"found\" | \"not_found\")",
+          "emailClickId": "String?",
+          "finalStrategy": "MatchStrategy?",
+          "finalClickId": "String?",
+          "timeWindowStart": "DateTime",
+          "timeWindowEnd": "DateTime",
+          "processingTimeMs": "Int",
+          "createdAt": "DateTime @default(now())"
+        },
+        "indexes": [
+          "@@index([conversionId])",
+          "@@index([createdAt(sort: Desc)])",
+          "@@index([finalStrategy, createdAt])"
+        ],
+        "purpose": "Audit trail detalhado do matching (para debugging e analytics)"
+      },
+      "DispatchAttempt": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String",
+          "eventId": "String",
+          "attempt": "Int",
+          "status": "DispatchStatus (pending | success | failed)",
+          "error": "String?",
+          "createdAt": "DateTime @default(now())"
+        },
+        "indexes": [
+          "@@index([tenantId])",
+          "@@index([tenantId, eventId])"
+        ],
+        "purpose": "Log de tentativas de envio ao Meta CAPI"
+      },
+      "SetupSession": {
+        "fields": {
+          "id": "String @id",
+          "tenantId": "String?",
+          "projectName": "String",
+          "state": "String (draft | validating | active)",
+          "webhookToken": "String",
+          "createdAt": "DateTime @default(now())",
+          "updatedAt": "DateTime @updatedAt",
+          "issues": "Json?",
+          "input": "Json?",
+          "checks": "Json?"
+        },
+        "indexes": [
+          "@@index([tenantId])"
+        ],
+        "purpose": "Sessões do wizard de onboarding"
+      },
+      "Funnel": {
+        "fields": {
+          "id": "String @id @default(cuid())",
+          "tenantId": "String",
+          "name": "String",
+          "status": "String @default(\"draft\")",
+          "createdAt": "DateTime @default(now())",
+          "updatedAt": "DateTime @updatedAt"
+        },
+        "purpose": "Funnels de marketing configuráveis (future use)"
+      }
+    },
+    "enums": {
+      "TenantStatus": ["provisioning", "active", "suspended", "retired"],
+      "DispatchStatus": ["pending", "success", "failed"],
+      "MatchStrategy": ["fbc", "fbp", "email", "unmatched"],
+      "GatewayType": ["hotmart", "kiwify", "stripe", "pagseguro", "perfectpay"]
+    },
+    "critical_indexes": {
+      "Click": "(tenantId, fbc), (tenantId, fbclid)",
+      "Conversion": "(tenantId, fbc), (tenantId, fbp), (tenantId, emailHash), (tenantId, sentToCAPI)",
+      "Identity": "(tenantId, emailHash), (tenantId, phoneHash)",
+      "DedupeRegistry": "UNIQUE (tenantId, eventId)"
+    }
+  },
+  "external_integrations": {
+    "payment_gateways": [
+      {
+        "name": "Hotmart",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-007",
+        "adapter": "hotmart-adapter.ts",
+        "webhook_endpoint": "POST /api/v1/webhooks/hotmart",
+        "signature_validation": "HMAC-SHA256",
+        "normalized_event": "NormalizedWebhookEvent",
+        "data_extracted": [
+          "Order ID",
+          "Customer email",
+          "Customer name",
+          "Amount",
+          "Currency"
+        ]
+      },
+      {
+        "name": "Kiwify",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-007",
+        "adapter": "kiwify-adapter.ts",
+        "webhook_endpoint": "POST /api/v1/webhooks/kiwify",
+        "signature_validation": "HMAC",
+        "data_extracted": [
+          "Sale ID",
+          "Customer email",
+          "Product name",
+          "Amount"
+        ]
+      },
+      {
+        "name": "Stripe",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-007",
+        "adapter": "stripe-adapter.ts",
+        "webhook_endpoint": "POST /api/v1/webhooks/stripe",
+        "signature_validation": "Stripe signature",
+        "events_tracked": [
+          "charge.succeeded",
+          "charge.refunded"
+        ]
+      },
+      {
+        "name": "PagSeguro",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-007",
+        "adapter": "pagseguro-adapter.ts",
+        "webhook_endpoint": "POST /api/v1/webhooks/pagseguro",
+        "signature_validation": "HMAC",
+        "events_tracked": [
+          "charge.approved",
+          "charge.completed"
+        ]
+      },
+      {
+        "name": "PerfectPay",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-005",
+        "adapter": "perfectpay-adapter.ts",
+        "webhook_endpoint": "POST /api/v1/webhooks/perfectpay/:tenantId",
+        "signature_validation": "HMAC-SHA256",
+        "security_notes": "Timing-safe comparison",
+        "setup_webhook": "POST /api/v1/webhooks/perfectpay/:sessionId/:token",
+        "data_extracted": [
+          "Purchase ID",
+          "Buyer email",
+          "Buyer phone",
+          "Product details",
+          "Amount",
+          "Status"
+        ]
+      }
+    ],
+    "advertising_platforms": [
+      {
+        "name": "Meta Conversions API (CAPI)",
+        "implementation_status": "IN_PROGRESS",
+        "story": "story-track-ai-009",
+        "client": "services/meta-capi-client.ts",
+        "version": "v21",
+        "endpoint": "https://graph.facebook.com/v21.0/{pixelId}/events",
+        "parameters_sent": 15,
+        "features": [
+          "Event batching",
+          "Retry logic (exponential backoff)",
+          "Idempotency via event_id",
+          "Hashed PII (SHA-256)"
+        ],
+        "auth": "Access Token from AWS Secrets Manager",
+        "rate_limiting": "Meta's standard limits",
+        "deduplication": "event_id unique constraint"
+      }
+    ],
+    "infrastructure": [
+      {
+        "service": "AWS API Gateway",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-002",
+        "purpose": "Gateway de entrada para todas as requisições"
+      },
+      {
+        "service": "AWS WAF",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-002",
+        "purpose": "Proteção contra ataques de negação de serviço"
+      },
+      {
+        "service": "AWS ECS Fargate",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-003",
+        "purpose": "Execução de containers (API + workers)",
+        "configurations": [
+          "Task definition com CPU/memory adequados",
+          "Auto-scaling baseado em CPU/memória",
+          "Health checks"
+        ]
+      },
+      {
+        "service": "AWS RDS PostgreSQL",
+        "implementation_status": "DONE",
+        "purpose": "Banco de dados transacional",
+        "provider": "Supabase (managed)",
+        "features": [
+          "SSL/TLS encryption",
+          "Automated backups",
+          "Multi-AZ (optional)"
+        ]
+      },
+      {
+        "service": "AWS SQS",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-009",
+        "purpose": "Fila de processamento assíncrono",
+        "queues": [
+          "ingest-events (webhooks)",
+          "capi-dispatch (para Meta CAPI)"
+        ],
+        "dlq": "Yes (dead-letter queue por fila)"
+      },
+      {
+        "service": "AWS Secrets Manager",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-002",
+        "purpose": "Armazenamento seguro de credenciais",
+        "secrets": [
+          "Meta CAPI token",
+          "JWT secret",
+          "Gateway credentials",
+          "Database password"
+        ]
+      },
+      {
+        "service": "AWS CloudWatch",
+        "implementation_status": "DONE",
+        "story": "story-track-ai-003",
+        "purpose": "Observabilidade e logging",
+        "metrics": [
+          "Request latency",
+          "Error rates",
+          "Match rate",
+          "Queue depth"
+        ]
+      },
+      {
+        "service": "AWS S3",
+        "implementation_status": "PLANNED",
+        "purpose": "Armazenamento de evidências (prints, logs técnicos)"
+      }
+    ]
+  },
+  "implemented_stories": [
+    {
+      "id": "story-track-ai-001",
+      "title": "Setup Wizard + API Sessions",
+      "status": "DONE",
+      "qa_status": "✅ PASSED",
+      "components": [
+        "Frontend wizard 3-4 passos",
+        "Setup session API",
+        "Validation flow",
+        "PerfectPay setup webhook"
+      ]
+    },
+    {
+      "id": "story-track-ai-002",
+      "title": "Secrets + AWS API Gateway + WAF",
+      "status": "DONE",
+      "qa_status": "✅ PASSED",
+      "components": [
+        "AWS Secrets Manager integration",
+        "API Gateway routing",
+        "WAF rules"
+      ]
+    },
+    {
+      "id": "story-track-ai-003",
+      "title": "Deploy ECS Fargate + Observabilidade",
+      "status": "DONE",
+      "qa_status": "✅ PASSED",
+      "components": [
+        "ECS task definition",
+        "CloudWatch logging",
+        "Health checks"
+      ]
+    },
+    {
+      "id": "story-track-ai-004",
+      "title": "Click Ingestion (POST /api/v1/track/click)",
+      "status": "DONE",
+      "qa_status": "✅ PASSED",
+      "components": [
+        "Click handler",
+        "Database persistence",
+        "Zod validation"
+      ]
+    },
+    {
+      "id": "story-track-ai-005",
+      "title": "PerfectPay Webhook HMAC-SHA256",
+      "status": "READY_FOR_DEPLOY",
+      "qa_status": "✅ PASSED",
+      "components": [
+        "PerfectPay adapter",
+        "Signature validation",
+        "Timing-safe comparison"
+      ]
+    },
+    {
+      "id": "story-track-ai-006",
+      "title": "Pageview & Checkout Endpoints",
+      "status": "IN_PROGRESS",
+      "qa_status": "🔄 AWAITING_PO",
+      "components": [
+        "POST /api/v1/track/pageview",
+        "POST /api/v1/track/initiate_checkout",
+        "Dashboard KPIs"
+      ]
+    },
+    {
+      "id": "story-track-ai-007",
+      "title": "Generic Webhook Receiver",
+      "status": "DONE",
+      "qa_status": "✅ PASSED",
+      "components": [
+        "Webhook router pattern",
+        "Hotmart adapter",
+        "Kiwify adapter",
+        "Stripe adapter",
+        "PagSeguro adapter",
+        "Normalized event format"
+      ]
+    },
+    {
+      "id": "story-track-ai-008",
+      "title": "Match Engine (Click → Conversion)",
+      "status": "DONE",
+      "qa_status": "✅ PASSED",
+      "components": [
+        "FBC matching (72h window)",
+        "FBP matching (fallback)",
+        "Email matching (TODO)",
+        "MatchLog audit trail",
+        "Match statistics endpoint"
+      ]
+    },
+    {
+      "id": "story-track-ai-009",
+      "title": "SQS Dispatch to Meta CAPI",
+      "status": "IN_PROGRESS",
+      "components": [
+        "Meta CAPI client",
+        "Event batching",
+        "Retry logic",
+        "Dispatch attempts tracking"
+      ]
+    },
+    {
+      "id": "story-track-ai-010",
+      "title": "Dashboard + Analytics",
+      "status": "DONE",
+      "qa_status": "✅ PASSED",
+      "components": [
+        "KPI cards",
+        "Match rate chart",
+        "Performance chart",
+        "Events table",
+        "Failures monitor",
+        "Export panel",
+        "Analytics API routes"
+      ]
+    }
+  ],
+  "backlog": [
+    {
+      "id": "story-track-ai-011",
+      "title": "Replay Engine (Retry Failed Conversions)",
+      "status": "TODO",
+      "depends_on": "story-track-ai-009"
+    },
+    {
+      "id": "story-track-ai-012",
+      "title": "Email Matching (Story 008b)",
+      "status": "TODO",
+      "depends_on": "story-track-ai-008"
+    },
+    {
+      "id": "story-track-ai-013",
+      "title": "Advanced Scoring Algorithm",
+      "status": "TODO",
+      "depends_on": "story-track-ai-008"
+    },
+    {
+      "id": "story-track-ai-014",
+      "title": "Multi-attribute Matching",
+      "status": "TODO",
+      "depends_on": "story-track-ai-013"
+    }
+  ],
+  "testing": {
+    "framework": "Vitest + Supertest",
+    "test_files": [
+      "apps/api/src/click-handler.test.ts",
+      "apps/api/src/pageview-handler.test.ts",
+      "apps/api/src/checkout-handler.test.ts",
+      "apps/api/src/perfectpay-webhook-handler.test.ts",
+      "apps/api/src/webhooks/hotmart-adapter.test.ts",
+      "apps/api/src/webhooks/kiwify-adapter.test.ts",
+      "apps/api/src/webhooks/stripe-adapter.test.ts",
+      "apps/api/src/webhooks/pagseguro-adapter.test.ts",
+      "apps/api/src/validation.test.ts",
+      "apps/api/src/services/meta-capi-client.test.ts",
+      "apps/api/src/lib/circuit-breaker.test.ts",
+      "apps/web/src/app/page.test.ts",
+      "apps/web/src/components/dashboard/__tests__/kpi-cards.test.tsx",
+      "apps/web/src/components/dashboard/__tests__/events-table.test.tsx"
+    ]
+  },
+  "key_patterns": {
+    "validation": "All inputs validated via Zod schemas from packages/shared",
+    "database_access": "All via Prisma ORM with transactions",
+    "authentication": "JWT for analytics routes",
+    "webhook_security": "HMAC-SHA256 with timing-safe comparison",
+    "pii_handling": "SHA-256 hashing before persistence (LGPD compliance)",
+    "error_handling": "Structured error responses with HTTP status codes",
+    "async_processing": "SQS queues for webhook processing and CAPI dispatch",
+    "matching": "Deterministic-first (FBC/FBP) + fallback unmatched"
+  },
+  "architecture_slos": {
+    "scalability": "10.000 eventos/min (with burst support)",
+    "latency_p95": "< 60s end-to-end (click → CAPI dispatch)",
+    "uptime": "99.9% (three nines)",
+    "match_rate": "> 80%",
+    "extensibility": "Nova gateway em < 2 dias"
+  }
+}

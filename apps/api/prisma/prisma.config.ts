@@ -8,6 +8,6 @@ export default defineConfig({
   },
   datasource: {
     provider: 'postgresql',
-    url: env('DB_URL')
+    url: env('DATABASE_URL') || env('DB_URL')
   }
 });

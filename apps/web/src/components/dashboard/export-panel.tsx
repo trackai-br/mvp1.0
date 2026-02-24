@@ -20,8 +20,7 @@ export default function ExportPanel({ period, onPeriodChange }: ExportPanelProps
 
     try {
       const response = await fetch(
-        `/api/v1/analytics/export/${format}?period=${period}`,
-        { headers: { 'x-tenant-id': 'tenant-id' } }
+        `/api/v1/analytics/export/${format}?period=${period}`
       );
 
       if (!response.ok) {

@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { setupSessionCreateSchema, type SetupSessionStatus } from '@/lib/contracts';
+import { setupSessionCreateSchema, type SetupSessionStatus } from '@hub/shared';
 import type { CSSProperties } from 'react';
 import type { z } from 'zod';
 
@@ -450,10 +450,25 @@ export default function Home() {
                   ))}
                 </div>
 
-                <input type="hidden" {...form.register('gateway.platform')} value="perfectpay" />
+                <div style={{ marginTop: 16 }}>
+                  <label htmlFor="gateway">Gateway de Pagamento</label>
+                  <select
+                    id="gateway"
+                    {...form.register('gateway.platform')}
+                    style={{ width: '100%', padding: 8, marginBottom: 8 }}
+                  >
+                    <option value="">Selecione um gateway</option>
+                    <option value="perfectpay">Perfect Pay</option>
+                    <option value="hotmart">Hotmart</option>
+                    <option value="kiwify">Kiwify</option>
+                    <option value="stripe">Stripe</option>
+                    <option value="pagseguro">PagSeguro</option>
+                  </select>
+                  <p style={{ color: 'crimson' }}>{form.formState.errors.gateway?.platform?.message}</p>
+                </div>
 
                 <div style={{ marginTop: 16 }}>
-                  <label htmlFor="apiKey">Token/API Key da Perfect Pay</label>
+                  <label htmlFor="apiKey">Token/API Key</label>
                   <input id="apiKey" {...form.register('gateway.apiKey')} style={{ width: '100%' }} />
                   <p style={{ color: 'crimson' }}>{form.formState.errors.gateway?.apiKey?.message}</p>
                 </div>

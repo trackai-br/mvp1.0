@@ -1,4 +1,4 @@
-import type { SetupSessionCreateInput, SetupSessionStatus } from '@/lib/contracts';
+import type { SetupSessionCreateInput, SetupSessionStatus } from '@hub/shared';
 
 const sessions = new Map<string, SetupSessionStatus>();
 

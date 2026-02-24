@@ -15,20 +15,19 @@ export async function handlePageviewIngest(
   | { ok: true; id: string }
   | { error: 'tenant_not_found' }
 > {
+  // Import Prisma for defaults
+  const { prisma } = await import('./db.js');
+
   // 1. Verificar tenant
-  if (!deps.findTenant) {
-    throw new Error('findTenant dependency is required');
-  }
-  const tenant = await deps.findTenant(tenantId);
+  const findTenant = deps.findTenant ?? ((id: string) => prisma.tenant.findUnique({ where: { id } }));
+  const tenant = await findTenant(tenantId);
   if (!tenant) {
     return { error: 'tenant_not_found' };
   }
 
   // 2. Persistir pageview com captura de IP e user agent
-  if (!deps.createPageview) {
-    throw new Error('createPageview dependency is required');
-  }
-  const createPageview = deps.createPageview;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createPageview = deps.createPageview ?? ((data: any) => prisma.pageview.create({ data }));
 
   const result = await createPageview({
     tenantId: tenant.id,

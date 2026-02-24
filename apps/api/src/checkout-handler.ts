@@ -15,20 +15,19 @@ export async function handleCheckoutIngest(
   | { ok: true; id: string }
   | { error: 'tenant_not_found' }
 > {
+  // Import Prisma for defaults
+  const { prisma } = await import('./db.js');
+
   // 1. Verificar tenant
-  if (!deps.findTenant) {
-    throw new Error('findTenant dependency is required');
-  }
-  const tenant = await deps.findTenant(tenantId);
+  const findTenant = deps.findTenant ?? ((id: string) => prisma.tenant.findUnique({ where: { id } }));
+  const tenant = await findTenant(tenantId);
   if (!tenant) {
     return { error: 'tenant_not_found' };
   }
 
   // 2. Persistir checkout com captura de IP, user agent e items do carrinho
-  if (!deps.createCheckout) {
-    throw new Error('createCheckout dependency is required');
-  }
-  const createCheckout = deps.createCheckout;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createCheckout = deps.createCheckout ?? ((data: any) => prisma.checkout.create({ data }));
 
   const result = await createCheckout({
     tenantId: tenant.id,

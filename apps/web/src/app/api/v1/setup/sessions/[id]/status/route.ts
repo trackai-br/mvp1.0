@@ -1,4 +1,4 @@
-import { setupSessionStatusSchema } from '@/lib/contracts';
+import { setupSessionStatusSchema } from '@hub/shared';
 import { NextResponse } from 'next/server';
 import { getSetupSession } from '@/lib/server/setup-store';
 
