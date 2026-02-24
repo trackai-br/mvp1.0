@@ -1,6 +1,6 @@
 # Story Track AI 006 – Endpoints de Pageview e Initiate Checkout
 
-## Status: InProgress
+## Status: Ready
 
 ## Contexto
 Com o endpoint de ingestão de click funcionando (Story 004), o próximo passo é capturar os dois outros eventos principais do funnel: **pageview** (quando usuário chega na landing) e **initiate_checkout** (quando começa o processo de compra). Estes eventos fornecem contexto temporal do user journey e são críticos para matching com conversões posteriores.
