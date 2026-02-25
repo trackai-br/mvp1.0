@@ -40,9 +40,13 @@ RUN rm -rf ./node_modules/@hub/shared && mkdir -p ./node_modules/@hub/shared
 COPY --from=builder /app/packages/shared/dist ./node_modules/@hub/shared/dist
 COPY --from=builder /app/packages/shared/package.json ./node_modules/@hub/shared/package.json
 
+# Copiar script de entrypoint (executa migrations + inicia servidor)
+COPY apps/api/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3001/api/v1/health || exit 1
 
-CMD ["node", "dist/server.js"]
+ENTRYPOINT ["/app/entrypoint.sh"]
