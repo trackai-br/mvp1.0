@@ -6,12 +6,24 @@ sleep 5
 
 # ─── VALIDAÇÃO 1: DATABASE_URL ───────────────────────────────────────────────
 echo "🔍 Validando DATABASE_URL..."
+echo "   DATABASE_URL value: [$DATABASE_URL]"
+echo "   DATABASE_URL length: ${#DATABASE_URL}"
+echo "   All env vars with 'DATABASE': $(env | grep -i database || echo 'NONE')"
+
 if [ -z "$DATABASE_URL" ]; then
   echo "❌ ERRO CRÍTICO: DATABASE_URL não está definida!"
   echo "   Contexto:"
   echo "   - NODE_ENV: $NODE_ENV"
   echo "   - PORT: $PORT"
   echo "   - Variáveis definidas: $(env | wc -l)"
+  echo "   - Todas as variáveis:"
+  env | sort
+  exit 1
+fi
+
+if [ "$DATABASE_URL" = " " ] || ! echo "$DATABASE_URL" | grep -q "postgres"; then
+  echo "⚠️  AVISO: DATABASE_URL está vazio ou inválido!"
+  echo "   Valor: [$DATABASE_URL]"
   exit 1
 fi
 
