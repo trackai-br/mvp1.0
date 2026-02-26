@@ -43,6 +43,9 @@ echo "   Prisma schema exists: $([ -f prisma/schema.prisma ] && echo 'YES' || ec
 # Usar NODE_NO_WARNINGS para reduzir noise
 export NODE_NO_WARNINGS=1
 
+# Ensure DATABASE_URL is available for Prisma 7
+export PRISMA_DATABASE_URL="$DATABASE_URL"
+
 if npx prisma migrate deploy --schema ./prisma/schema.prisma; then
   echo "✅ Migrations executadas com sucesso"
 else
