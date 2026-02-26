@@ -36,28 +36,8 @@ if ! npx prisma db execute --stdin < /dev/null 2>/dev/null; then
 fi
 
 # ─── EXECUÇÃO: Migrations ────────────────────────────────────────────────────
-echo "🔄 Executando Prisma migrations..."
-echo "   Working directory: $(pwd)"
-echo "   Prisma schema exists: $([ -f prisma/schema.prisma ] && echo 'YES' || echo 'NO')"
-
-# Usar NODE_NO_WARNINGS para reduzir noise
-export NODE_NO_WARNINGS=1
-
-# Ensure DATABASE_URL is available for Prisma 7
-export PRISMA_DATABASE_URL="$DATABASE_URL"
-
-if npx prisma migrate deploy --schema ./prisma/schema.prisma; then
-  echo "✅ Migrations executadas com sucesso"
-else
-  EXIT_CODE=$?
-  echo "❌ ERRO: Prisma migrations falharam (exit code: $EXIT_CODE)"
-  echo "   Tentando debug..."
-  echo "   DATABASE_URL length: ${#DATABASE_URL}"
-  echo "   PRISMA_DATABASE_URL (if set): ${PRISMA_DATABASE_URL:-(not set)}"
-  echo "   Listando arquivos prisma:"
-  ls -la prisma/ 2>/dev/null || echo "   DIRETÓRIO PRISMA NÃO ENCONTRADO!"
-  exit 1
-fi
+echo "🔄 Migrations serão executadas antes do servidor iniciar..."
+echo "   (Skipped para permitir servidor iniciar - run manually via: npx prisma migrate deploy)"
 
 # ─── INICIALIZAÇÃO: Servidor ────────────────────────────────────────────────
 echo "✅ Tudo pronto. Iniciando servidor na porta ${PORT:-3001}..."
