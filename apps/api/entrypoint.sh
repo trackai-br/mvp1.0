@@ -36,8 +36,12 @@ if ! npx prisma db execute --stdin < /dev/null 2>/dev/null; then
 fi
 
 # ─── EXECUÇÃO: Migrations ────────────────────────────────────────────────────
-echo "🔄 Migrations serão executadas antes do servidor iniciar..."
-echo "   (Skipped para permitir servidor iniciar - run manually via: npx prisma migrate deploy)"
+echo "🔄 Executando Prisma migrations..."
+if npx prisma migrate deploy; then
+  echo "✅ Migrations executadas com sucesso"
+else
+  echo "⚠️  Aviso: Migrations falharam, continuando mesmo assim..."
+fi
 
 # ─── INICIALIZAÇÃO: Servidor ────────────────────────────────────────────────
 echo "✅ Tudo pronto. Iniciando servidor na porta ${PORT:-3001}..."
