@@ -37,10 +37,17 @@ fi
 
 # ─── EXECUÇÃO: Migrations ────────────────────────────────────────────────────
 echo "🔄 Executando Prisma migrations..."
+echo "   Command: npx prisma migrate deploy"
+echo "   Working Directory: /app"
+echo "   Prisma Schema: /app/prisma/schema.prisma"
+
 if npx prisma migrate deploy; then
-  echo "✅ Migrations executadas com sucesso"
+  echo "✅ Migrations executadas com sucesso!"
 else
-  echo "⚠️  Aviso: Migrations falharam, continuando mesmo assim..."
+  echo "❌ ERRO FATAL: Migrations falharam!"
+  echo "   Saída de erro acima ↑"
+  echo "   Não é possível iniciar o servidor sem as migrations."
+  exit 1
 fi
 
 # ─── INICIALIZAÇÃO: Servidor ────────────────────────────────────────────────
