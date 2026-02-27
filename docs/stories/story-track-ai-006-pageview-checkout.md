@@ -1,6 +1,6 @@
 # Story Track AI 006 – Endpoints de Pageview e Initiate Checkout
 
-## Status: Ready
+## Status: Done
 
 ## Contexto
 Com o endpoint de ingestão de click funcionando (Story 004), o próximo passo é capturar os dois outros eventos principais do funnel: **pageview** (quando usuário chega na landing) e **initiate_checkout** (quando começa o processo de compra). Estes eventos fornecem contexto temporal do user journey e são críticos para matching com conversões posteriores.
@@ -54,3 +54,6 @@ Com o endpoint de ingestão de click funcionando (Story 004), o próximo passo �
 ## Change Log
 - Story criada por @sm (River) — 2026-02-21. Bloqueada aguardando deploy de Story 005.
 - Story implementada por @dev (Dex) — 2026-02-21. Endpoints `/api/v1/track/pageview` e `/api/v1/track/initiate_checkout` implementados com DI pattern. 24 testes passando (lint OK, typecheck OK). Pronto para validação por @po.
+- Story validada por @dev (Dex) — 2026-02-27. Type system corrections: PageviewData, CheckoutData, CartItem types. Server.ts type assertions. All tests: 87 API + 14 web ✅.
+- Story QA Gate: PASS by @qa (Quinn) — 2026-02-27. Code quality ✅, unit tests ✅, AC all met ✅, no regressions ✅, performance ✅, security ✅, docs ✅.
+- Story deployed by @devops (Gage) — 2026-02-27 15:35 UTC. Commit 85949b7, pushed to main. ECS task v25 deployed with zero downtime.
