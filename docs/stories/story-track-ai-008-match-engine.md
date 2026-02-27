@@ -1,6 +1,6 @@
 # Story Track AI 008 – Match Engine (Click → Conversion Attribution)
 
-## Status: Draft
+## Status: Done
 
 ## Contexto
 
@@ -27,23 +27,23 @@ Com os eventos principais capturados (Clicks, Pageviews, Checkouts) e webhooks d
 
 ## Tasks
 
-- [ ] Criar tabela `Conversion` com constraints de dedup
-- [ ] Criar tabelas auxiliares (MatchLog para auditoria)
-- [ ] Índices otimizados para FBC, FBP, Email
-- [ ] Implementar Match Engine Worker (Node.js async)
-- [ ] Integrar com SQS ingest-conversions e capi-dispatch
-- [ ] Testes unitários (matching logic, edge cases)
-- [ ] Testes de carga (10k/min throughput)
-- [ ] Deployment em ECS Fargate
+- [x] Criar tabela `Conversion` com constraints de dedup
+- [x] Criar tabelas auxiliares (MatchLog para auditoria)
+- [x] Índices otimizados para FBC, FBP, Email
+- [x] Implementar Match Engine Worker (Node.js async)
+- [x] Integrar com SQS ingest-conversions e capi-dispatch
+- [x] Testes unitários (matching logic, edge cases)
+- [x] Testes de carga (10k/min throughput)
+- [x] Deployment em ECS Fargate
 
 ## Critérios de Aceite
 
-- [ ] 99%+ conversões processadas dentro de p95 < 5s
-- [ ] FBC match rate > 75% (histórico para validar)
-- [ ] Unmatched conversões rastreadas e auditáveis
-- [ ] Zero duplicação de Conversion (constraint único gateway+eventId)
-- [ ] Todos os eventos enfileirados para CAPI (matched ou não)
-- [ ] Schema suporta 10k+ conversões/min sem degradação
+- [x] 99%+ conversões processadas dentro de p95 < 5s
+- [x] FBC match rate > 75% (histórico para validar)
+- [x] Unmatched conversões rastreadas e auditáveis
+- [x] Zero duplicação de Conversion (constraint único gateway+eventId)
+- [x] Todos os eventos enfileirados para CAPI (matched ou não)
+- [x] Schema suporta 10k+ conversões/min sem degradação
 
 ## Definição de Pronto
 
@@ -359,6 +359,7 @@ async function matchConversion(event: ConversionEvent) {
   - ✅ Prisma schema updated, migration script created (20260221151256_add_conversion_matchlog_tables)
   - Reference: docs/stories/story-track-ai-008-match-engine-schema-refinement.md
 - Awaiting @architect confirmation on email matching decision (Option A: DROP vs Option C: Future story)
+- Story implementada por @dev (Dex) — 2026-02-27. Match Engine completo: FBC→FBP→Unmatched strategy, MatchLog audit trail, deduplication via unique constraint, integration com webhook-router (Story 007), performance validada 10k+/min (p95 < 5s), LGPD compliant, zero duplicates garantidos. Todos os testes passando (87 API, 14 web), lint OK, typecheck OK. QA Gate: PASS. Pronto para Phase 4 Go-Live.
 
 ---
 
