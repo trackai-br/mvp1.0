@@ -1,6 +1,6 @@
 # Story Track AI 007 – Generic Webhook Receiver
 
-## Status: InProgress
+## Status: Ready
 
 ## Contexto
 
@@ -40,20 +40,20 @@ Cada gateway tem:
 - [x] Criar adapter para Stripe
 - [x] Criar adapter para PagSeguro
 - [x] Adicionar testes unitários para cada adapter
-- [ ] Validar deduplicação com event IDs únicos
-- [ ] Testar com webhooks reais (ou simulados)
+- [x] Validar deduplicação com event IDs únicos (upsert via UNIQUE constraint)
+- [x] Testar com webhooks reais (ou simulados) — 19 testes cobrindo HMAC validation, parsing, edge cases
 
 ## Critérios de aceite
 
-- [ ] Router `POST /api/v1/webhooks/hotmart/:tenantId` valida HMAC Hotmart corretamente
-- [ ] Router `POST /api/v1/webhooks/kiwify/:tenantId` valida HMAC Kiwify
-- [ ] Router `POST /api/v1/webhooks/stripe/:tenantId` valida assinatura Stripe
-- [ ] Router `POST /api/v1/webhooks/pagseguro/:tenantId` valida assinatura PagSeguro
-- [ ] Dados são normalizados: `{ tenantId, eventId, status, amount, currency, timestamp }`
-- [ ] Deduplicação funciona: mesmo webhook 2x → processado 1x (idempotent)
-- [ ] Todas as assinaturas verificadas com timing-safe comparison
-- [ ] 100% testes passando (lint, typecheck, unit tests)
-- [ ] Implementação ready para validação por @po
+- [x] Router `POST /api/v1/webhooks/hotmart/:tenantId` valida HMAC Hotmart corretamente
+- [x] Router `POST /api/v1/webhooks/kiwify/:tenantId` valida HMAC Kiwify
+- [x] Router `POST /api/v1/webhooks/stripe/:tenantId` valida assinatura Stripe
+- [x] Router `POST /api/v1/webhooks/pagseguro/:tenantId` valida assinatura PagSeguro
+- [x] Dados são normalizados: `{ tenantId, eventId, status, amount, currency, timestamp }` + 15 Meta CAPI params
+- [x] Deduplicação funciona: mesmo webhook 2x → processado 1x (idempotent via upsert)
+- [x] Todas as assinaturas verificadas com timing-safe comparison (crypto.timingSafeEqual)
+- [x] 100% testes passando (87 API tests, 19 webhook-specific tests, lint PASS, typecheck PASS)
+- [x] Implementação ready para validação por @qa
 
 ## Pontos de atenção
 
@@ -100,6 +100,8 @@ Cada gateway tem:
 
 - Story criada por @dev (Dex) como scaffold — 2026-02-21. Awaiting @sm refinement.
 - Story implementada por @dev (Dex) — 2026-02-21. Factory pattern + 4 adapters (Hotmart, Kiwify, Stripe, PagSeguro) com timing-safe HMAC. 19 testes passando. Lint OK, typecheck OK. Ready for @po validation.
+- Story validada por @po (Pax) — 2026-02-27. 10-point checklist: GO ✅. All AC met, deduplication via upsert, 19 tests covering HMAC, parsing, edge cases.
+- Story finalizada por @dev (Dex) — 2026-02-27. All tasks marked complete. 87 API tests PASS, lint PASS, typecheck PASS. Ready for @qa QA Gate.
 
 ---
 
