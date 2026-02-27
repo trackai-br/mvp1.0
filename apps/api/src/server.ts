@@ -19,7 +19,6 @@ import { handlePageviewIngest } from './pageview-handler.js';
 import { handleCheckoutIngest } from './checkout-handler.js';
 import { handlePerfectPayWebhook } from './perfectpay-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
-import { registerDebugWebhook } from './webhooks-debug.js';
 import { register as registerAnalyticsRoutes } from './routes/analytics.js';
 import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js';
 import { prisma } from './db.js';
@@ -228,9 +227,6 @@ async function bootstrap() {
 
   // Register generic webhook routes for multi-gateway support
   await registerWebhookRoutes(app);
-
-  // Register debug webhook endpoint (temporary, for HMAC validation troubleshooting)
-  await registerDebugWebhook(app);
 
   // Register analytics routes (Story 010: Dashboard Operacional)
   await registerAnalyticsRoutes(app);
