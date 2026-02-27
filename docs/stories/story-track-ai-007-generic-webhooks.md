@@ -1,6 +1,6 @@
 # Story Track AI 007 – Generic Webhook Receiver
 
-## Status: Ready
+## Status: Done
 
 ## Contexto
 
@@ -102,6 +102,8 @@ Cada gateway tem:
 - Story implementada por @dev (Dex) — 2026-02-21. Factory pattern + 4 adapters (Hotmart, Kiwify, Stripe, PagSeguro) com timing-safe HMAC. 19 testes passando. Lint OK, typecheck OK. Ready for @po validation.
 - Story validada por @po (Pax) — 2026-02-27. 10-point checklist: GO ✅. All AC met, deduplication via upsert, 19 tests covering HMAC, parsing, edge cases.
 - Story finalizada por @dev (Dex) — 2026-02-27. All tasks marked complete. 87 API tests PASS, lint PASS, typecheck PASS. Ready for @qa QA Gate.
+- Story revisada por @qa (Quinn) — 2026-02-27. 7-point QA Gate: PASS ✅. Code quality excellent, 19 tests comprehensive, all AC verified, security (timing-safe HMAC) confirmed.
+- Story deployada por @devops (Gage) — 2026-02-27 18:45 UTC. Docker image story-007-v26 built, pushed ECR, ECS task v26 deployed. Health check: HTTP 200 ✅. Zero downtime rolling update complete.
 
 ---
 
