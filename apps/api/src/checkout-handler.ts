@@ -1,13 +1,35 @@
+type CartItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+};
+
+type CheckoutData = {
+  tenantId: string;
+  cartValue?: number | null;
+  currency?: string | null;
+  cartItems?: CartItem[] | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  fbclid?: string | null;
+  fbc?: string | null;
+  fbp?: string | null;
+  ip?: string | null;
+  userAgent?: string | null;
+};
+
 export type CheckoutHandlerDeps = {
   findTenant?: (id: string) => Promise<{ id: string } | null>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createCheckout?: (data: any) => Promise<{ id: string }>;
+  createCheckout?: (data: CheckoutData) => Promise<{ id: string }>;
 };
+
+type CheckoutBody = Partial<Omit<CheckoutData, 'tenantId'>>;
 
 export async function handleCheckoutIngest(
   tenantId: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  body: any,
+  body: CheckoutBody,
   ip: string | undefined,
   userAgent: string | undefined,
   deps: CheckoutHandlerDeps = {}
@@ -15,19 +37,45 @@ export async function handleCheckoutIngest(
   | { ok: true; id: string }
   | { error: 'tenant_not_found' }
 > {
+  // Generate CUID-like ID
+  const generateId = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let id = '';
+    for (let i = 0; i < 25; i++) {
+      id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return id;
+  };
+
   // Import Prisma for defaults
   const { prisma } = await import('./db.js');
 
-  // 1. Verificar tenant
-  const findTenant = deps.findTenant ?? ((id: string) => prisma.tenant.findUnique({ where: { id } }));
+  // 1. Verificar tenant (use raw SQL)
+  const findTenant = deps.findTenant ?? (async (id: string) => {
+    const result = await prisma.$queryRaw<[{ id: string }]>`
+      SELECT id FROM "Tenant" WHERE id = ${id} LIMIT 1
+    `;
+    return result.length > 0 ? result[0] : null;
+  });
+
   const tenant = await findTenant(tenantId);
   if (!tenant) {
     return { error: 'tenant_not_found' };
   }
 
-  // 2. Persistir checkout com captura de IP, user agent e items do carrinho
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const createCheckout = deps.createCheckout ?? ((data: any) => prisma.checkout.create({ data }));
+  // 2. Persistir checkout (use raw SQL)
+  const checkoutId = generateId();
+
+  const createCheckout = deps.createCheckout ?? (async (data: CheckoutData) => {
+    await prisma.$executeRaw`
+      INSERT INTO "Checkout" (id, "tenantId", "cartValue", currency, "cartItems", "utmSource", "utmMedium", "utmCampaign", fbclid, fbc, fbp, ip, "userAgent", "createdAt")
+      VALUES (${checkoutId}, ${data.tenantId}, ${data.cartValue ?? null}, ${data.currency ?? null}, ${data.cartItems ?? null},
+              ${data.utmSource ?? null}, ${data.utmMedium ?? null}, ${data.utmCampaign ?? null},
+              ${data.fbclid ?? null}, ${data.fbc ?? null}, ${data.fbp ?? null}, ${data.ip ?? null},
+              ${data.userAgent ?? null}, NOW())
+    `;
+    return { id: checkoutId };
+  });
 
   const result = await createCheckout({
     tenantId: tenant.id,

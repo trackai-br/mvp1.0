@@ -19,6 +19,7 @@ import { handlePageviewIngest } from './pageview-handler.js';
 import { handleCheckoutIngest } from './checkout-handler.js';
 import { handlePerfectPayWebhook } from './perfectpay-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
+import { registerDebugWebhook } from './webhooks-debug.js';
 import { register as registerAnalyticsRoutes } from './routes/analytics.js';
 import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js';
 import { prisma } from './db.js';
@@ -37,8 +38,8 @@ type PerfectPayWebhookParams = {
 async function bootstrap() {
   const app = Fastify({ logger: true });
 
-  // Register raw body plugin BEFORE other plugins
-  await app.register(rawBody, { global: false, runFirst: true });
+  // Register raw body plugin BEFORE other plugins (global: true ensures rawBody is available on all routes for HMAC validation)
+  await app.register(rawBody, { global: true, runFirst: true });
 
   await app.register(cors, { origin: true });
   await app.register(sensible);
@@ -136,14 +137,14 @@ async function bootstrap() {
     }
 
     // Minimal validation for pageview
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (!request.body || typeof (request.body as any).url !== 'string') {
+    const body = request.body as Record<string, unknown>;
+    if (!body || typeof body.url !== 'string') {
       return reply.code(400).send({ message: 'url obrigatorio e deve ser string.' });
     }
 
     const result = await handlePageviewIngest(
       tenantId,
-      request.body,
+      body,
       request.ip,
       request.headers['user-agent'] as string | undefined
     );
@@ -164,7 +165,7 @@ async function bootstrap() {
     // Minimal validation for checkout
     const result = await handleCheckoutIngest(
       tenantId,
-      request.body,
+      request.body as Record<string, unknown>,
       request.ip,
       request.headers['user-agent'] as string | undefined
     );
@@ -227,6 +228,9 @@ async function bootstrap() {
 
   // Register generic webhook routes for multi-gateway support
   await registerWebhookRoutes(app);
+
+  // Register debug webhook endpoint (temporary, for HMAC validation troubleshooting)
+  await registerDebugWebhook(app);
 
   // Register analytics routes (Story 010: Dashboard Operacional)
   await registerAnalyticsRoutes(app);
