@@ -1,22 +1,104 @@
 # 🔧 PRD Implementação — Correção de Infraestrutura Local
 
-## Status: ✅ CÓDIGO PRONTO — Bloqueador Infraestrutura (Colima macOS)
+## Status: ✅ SISTEMA COMPLETO — Teste Local em Progresso!
 
 **Data Início:** 2026-03-02
-**Última Atualização:** 2026-03-02 19:35
-**Tempo gasto:** 7.5+ horas
+**Última Atualização:** 2026-03-02 21:30 (Sessão 2 — Retorno após crash)
+**Tempo gasto:** 9+ horas acumuladas
 
 **RESULTADO FINAL:**
 - ✅ API iniciou com sucesso (`npm run dev`)
-- ✅ Health check respondeu com HTTP 200
+- ✅ Health check respondeu com status `"ok"` + `"db":"connected"`
+- ✅ Frontend (Next.js) rodando em localhost:3000
+- ✅ Supabase Cloud conectado e operacional
 - ✅ Código de correção 100% implementado e testado
-- ⚠️ Bloqueador de database: Colima Docker networking TCP/IP (não é bug nosso)
+- ✅ **FASE 1 (Teste Local) COMPLETA**
 
-**Conclusão após 6 iterações de solução:**
+---
+
+## ✅ FASE 2 — Teste de Onboarding (COMPLETA)
+
+**Data:** 2026-03-02 19:44-19:50
+**Agentes Utilizados:** @architect, @dev, @qa
+
+### Implementação
+
+- ✅ Criado teste automatizado com Playwright (`tests/setup-wizard-simple.spec.ts`)
+- ✅ 4 steps do wizard testados automaticamente
+- ✅ 9 screenshots capturados (um por ação importante)
+- ✅ Validação de webhook URL gerada
+- ✅ Teste manual com curl validando fluxo API completo
+
+### Resultados
+
+| Teste | Status | Detalhes |
+|-------|--------|----------|
+| Playwright (4 steps) | ✅ PASSOU | Todos os steps navegados, screenshots salvos |
+| API POST /setup/sessions | ✅ PASSOU | Session criada com ID único |
+| API POST /setup/sessions/{id}/validate | ✅ PASSOU | Webhook URL gerado corretamente |
+| Database (SetupSession) | ✅ VERIFICADO | 3 sessions no banco, estrutura OK |
+
+### SetupSessions Criadas
+
+```sql
+7e4519d6-1314-4550-b62a-70cda1df5cb8 | Manual Test    | troubleshooting_required
+e58459da-9320-43a2-8ab4-0eb402b7ac8b | Test API Valid | created
+44349a4a-2d5d-4c83-b16b-148da9ecbf03 | Test Project   | created
+```
+
+### Webhook Token Gerado
+
+```
+/api/v1/webhooks/perfectpay/{sessionId}/{token}
+Exemplo: /api/v1/webhooks/perfectpay/7e4519d6-1314-4550-b62a-70cda1df5cb8/e2ddbd7bdde749509d68d538c611889d
+```
+
+### Artefatos
+
+- `tests/setup-wizard-simple.spec.ts` — Teste Playwright completo
+- `playwright.config.ts` — Configuração do Playwright
+- `tests/screenshots/` — 9 screenshots do fluxo
+- Commit: (próximo hash após this one)
+
+---
+
+**Conclusão Anterior (FASE 1 - Docker):**
 - ✅ PostgreSQL Alpine: funciona via socket Unix, não via TCP/IP
 - ✅ PostgreSQL 15 (regular): funciona via socket Unix, não via TCP/IP
-- ❌ Supabase Local: issue de permissão Colima + TCP/IP networking
-- **ROOT CAUSE:** Colima Docker em macOS não permite TCP/IP port mapping 127.0.0.1:5432 → container
+- ✅ **Solução implementada:** init-env.ts + dotenv loading correto
+- ✅ Database conectado e operacional
+
+---
+
+## 🔴 Sessão 2 — Retorno após Terminal Crash (Descobertas Críticas)
+
+**Problema Encontrado:**
+- Terminal crashou durante FASE 1
+- Ao reiniciar, app retornou erro: `database "guilhermesimas" does not exist`
+- Health check mostrava `"db":"unreachable"`
+
+**Raiz Causa (Root Cause):**
+JavaScript hoists `import` statements ao topo do arquivo ANTES de código executar.
+Sequência errada:
+1. `import { prisma } from './db.js'` é hoisted ao topo
+2. `db.ts` executa e chama `createPrisma()`
+3. DEPOIS rodaria `dotenv.config()` (mas era tarde!)
+4. `DATABASE_URL` estava vazio quando Prisma tentou conectar
+
+**Solução Implementada:**
+- ✅ Criado arquivo `src/init-env.ts` que carrega .env.local como side-effect
+- ✅ Importado `init-env.ts` COMO PRIMEIRO IMPORT em `server.ts`
+- ✅ Garante que `dotenv.config()` executa ANTES de qualquer outro código
+- ✅ `DATABASE_URL` agora lido corretamente do Supabase Cloud
+
+**Resultado:**
+```
+[init-env] ✓ Loaded .env.local
+[init-env] ✓ DATABASE_URL loaded: postgresql://postgres.lvphewjjvsrhqihdaikd:5J1lIOZDAeG6Iex9@...
+{"status":"ok","db":"connected","project":"Track AI"}
+```
+
+**Commit:** `a552c4b` - "fix: critical env loading order — database connection now working"
 
 ---
 
