@@ -3,6 +3,7 @@ import { prisma } from '../db.js';
 import { dispatchConversionToMeta, retryStalledConversions } from '../services/dispatch-service.js';
 import {
   replayRetryableConversions,
+  getFailureAnalysis,
   getFailedConversionsByErrorType,
 } from '../services/replay-service.js';
 
@@ -291,6 +292,28 @@ export async function register(app: FastifyInstance): Promise<void> {
       return reply.send({
         message: 'Replay cycle complete',
         stats,
+      });
+    }
+  );
+
+  /**
+   * Get failure analysis summary (Story 011)
+   */
+  app.get<{ Querystring: { tenantId?: string; period?: string } }>(
+    '/api/v1/admin/dispatch/failure-analysis',
+    async (request, reply) => {
+      const { tenantId, period = '30' } = request.query;
+
+      if (!tenantId) {
+        return reply.code(400).send({ error: 'tenantId is required' });
+      }
+
+      const periodDays = parseInt(period, 10) || 30;
+      const analysis = await getFailureAnalysis(tenantId, periodDays);
+
+      return reply.send({
+        period: `${periodDays}d`,
+        ...analysis,
       });
     }
   );
