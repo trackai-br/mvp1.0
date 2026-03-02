@@ -7,17 +7,9 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 function createPrisma() {
   const connectionString = process.env.DATABASE_URL || '';
 
-  // SSL condicional: desativado para localhost/127.0.0.1, ativado para Supabase/produção
-  const isLocal = connectionString.includes('localhost') ||
-                  connectionString.includes('127.0.0.1') ||
-                  connectionString.includes('sslmode=disable');
-
-  const poolConfig: Record<string, unknown> = { connectionString };
-  if (!isLocal) {
-    poolConfig.ssl = { rejectUnauthorized: false };
-  }
-
-  const pool = new Pool(poolConfig);
+  // Connection string já contém sslmode=disable para local
+  // Prisma PgAdapter respeita PGSSLMODE env var
+  const pool = new Pool({ connectionString });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,

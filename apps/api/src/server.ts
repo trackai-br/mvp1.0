@@ -314,7 +314,8 @@ async function bootstrap() {
   await registerAnalyticsRoutes(app);
 
   // Start analytics refresh job (Story 011g-b: 5 min interval)
-  startAnalyticsRefreshJob();
+  // TODO: Fix TLS issue with analytics job - temporarily disabled
+  // startAnalyticsRefreshJob();
 
   await app.listen({ port: 3001, host: '0.0.0.0' });
 }
