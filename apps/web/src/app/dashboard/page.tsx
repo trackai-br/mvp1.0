@@ -1,247 +1,100 @@
 /**
- * Dashboard Page — Story 010: Dashboard Operacional + Analytics
+ * Dashboard Page — Story 010: Dashboard de Conversões + Analytics
  *
- * Operational dashboard with 6 tabs:
- * - Home: KPIs (total events, success %, match rate, latency, DLQ, uptime)
- * - Events: Filterable event log with detail modal
- * - Failures: DLQ monitor + circuit breaker status
- * - Match Rate: Line chart + by gateway breakdown
- * - Performance: Latency percentiles + throughput
- * - Export: CSV/JSON download
+ * Dashboard com visualizações em tempo real:
+ * - KPIs: Cliques, conversões, receita, match rate, sucesso CAPI
+ * - Gráfico de conversões ao longo do tempo (3 métricas)
+ * - Distribuição por gateway (conversões e receita)
+ * - Taxa de sucesso de envio Meta CAPI
+ * - Estratégias de match (FBP, FBC, Email, Phone)
+ * - Tabela de conversões recentes
  */
 
 'use client';
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  AreaChart, Area,
-} from 'recharts';
+import { useState, useEffect } from 'react';
+import { DashboardOverview } from '@/components/dashboard/DashboardOverview';
+import { ConversionsChart } from '@/components/dashboard/ConversionsChart';
+import { GatewayDistribution } from '@/components/dashboard/GatewayDistribution';
+import { DispatchStatusCard } from '@/components/dashboard/DispatchStatusCard';
+import { MatchRateCard } from '@/components/dashboard/MatchRateCard';
+import { RecentConversionsTable } from '@/components/dashboard/RecentConversionsTable';
 
-// Components
-import KPICards from '@/components/dashboard/kpi-cards';
-import EventsTable from '@/components/dashboard/events-table';
-import FailuresMonitor from '@/components/dashboard/failures-monitor';
-import MatchRateChart from '@/components/dashboard/match-rate-chart';
-import PerformanceChart from '@/components/dashboard/performance-chart';
-import ExportPanel from '@/components/dashboard/export-panel';
-
-type Tab = 'home' | 'events' | 'failures' | 'match-rate' | 'performance' | 'export';
-type Period = '24h' | '7d' | '30d';
-
-const TAB_LABELS: Record<Tab, string> = {
-  home: '📊 Home',
-  events: '📋 Events',
-  failures: '⚠️ Failures',
-  'match-rate': '📈 Match Rate',
-  performance: '⚡ Performance',
-  export: '💾 Export',
-};
+type Period = 7 | 30 | 90;
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('home');
-  const [period, setPeriod] = useState<Period>('7d');
-  const [timezone, setTimezone] = useState('local');
+  const [tenantId, setTenantId] = useState<string>('');
+  const [period, setPeriod] = useState<Period>(30);
 
-  // Fetch metrics
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
-    queryKey: ['analytics', 'metrics', period],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/analytics/metrics?period=${period}`);
-      if (!res.ok) throw new Error('Failed to fetch metrics');
-      return res.json();
-    },
-    refetchInterval: 30000, // Refresh every 30s
-  });
+  // Get tenant ID from URL params or context
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tid = params.get('tenantId') || localStorage.getItem('tenantId') || 'demo-tenant';
+    setTenantId(tid);
+  }, []);
 
-  // Fetch events
-  const { data: events, isLoading: eventsLoading } = useQuery({
-    queryKey: ['analytics', 'events', period],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/analytics/events?period=${period}&page=1&limit=50`);
-      if (!res.ok) throw new Error('Failed to fetch events');
-      return res.json();
-    },
-  });
-
-  // Fetch performance data
-  const { data: performance, isLoading: performanceLoading } = useQuery({
-    queryKey: ['analytics', 'performance', period],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/analytics/performance?period=${period}`);
-      if (!res.ok) throw new Error('Failed to fetch performance');
-      return res.json();
-    },
-  });
-
-  // Fetch match rate
-  const { data: matchRate, isLoading: matchRateLoading } = useQuery({
-    queryKey: ['analytics', 'match-rate', period],
-    queryFn: async () => {
-      const res = await fetch(`/api/v1/analytics/match-rate?period=${period}`);
-      if (!res.ok) throw new Error('Failed to fetch match rate');
-      return res.json();
-    },
-  });
+  if (!tenantId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="border-b border-slate-700 bg-slate-900/50 backdrop-blur">
+      <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Dashboard Operacional</h1>
-              <p className="text-slate-400 text-sm mt-1">Track AI SQS Dispatch Analytics</p>
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard de Conversões</h1>
+              <p className="text-gray-600 text-sm mt-1">Rastreamento em tempo real do hub server-side</p>
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <select
                 value={period}
-                onChange={(e) => setPeriod(e.target.value as Period)}
-                className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 text-sm"
+                onChange={(e) => setPeriod(Number(e.target.value) as Period)}
+                className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium hover:border-gray-400"
               >
-                <option value="24h">Last 24h</option>
-                <option value="7d">Last 7d</option>
-                <option value="30d">Last 30d</option>
+                <option value={7}>Últimos 7 dias</option>
+                <option value={30}>Últimos 30 dias</option>
+                <option value={90}>Últimos 90 dias</option>
               </select>
-              <select
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 border border-slate-600 text-sm"
-              >
-                <option value="local">Local TZ</option>
-                <option value="utc">UTC</option>
-              </select>
-              <button className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-xs font-medium">
-                🌙 Dark Mode
-              </button>
             </div>
           </div>
-
-          {/* Tab Navigation */}
-          <nav className="flex gap-2 overflow-x-auto">
-            {(Object.entries(TAB_LABELS) as [Tab, string][]).map(([tab, label]) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 rounded-t-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  activeTab === tab
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
         </div>
-      </header>
+      </div>
 
-      {/* Content */}
+      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Home Tab */}
-        {activeTab === 'home' && (
-          <div className="space-y-8">
-            <KPICards
-              metrics={metrics}
-              isLoading={metricsLoading}
-            />
+        <div className="space-y-6">
+          {/* KPI Cards */}
+          <DashboardOverview tenantId={tenantId} periodDays={period} />
 
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Latency Trend */}
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold mb-4">Latency Trend (7d)</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <AreaChart data={performance?.data || []}>
-                    <defs>
-                      <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                    <XAxis dataKey="date" stroke="#94a3b8" />
-                    <YAxis stroke="#94a3b8" />
-                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }} />
-                    <Area
-                      type="monotone"
-                      dataKey="latency_p95"
-                      stroke="#3b82f6"
-                      fillOpacity={1}
-                      fill="url(#colorLatency)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+          {/* Charts Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Conversions Timeline */}
+            <ConversionsChart tenantId={tenantId} periodDays={period} />
 
-              {/* Match Rate Trend */}
-              <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-                <h3 className="text-lg font-semibold mb-4">Match Rate Trend (30d)</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <LineChart data={matchRate?.data || []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#475569" />
-                    <XAxis dataKey="date" stroke="#94a3b8" />
-                    <YAxis stroke="#94a3b8" />
-                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569' }} />
-                    <Legend />
-                    <Line
-                      type="monotone"
-                      dataKey="match_rate_pct"
-                      stroke="#10b981"
-                      name="Match Rate %"
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            {/* Gateway Distribution */}
+            <GatewayDistribution tenantId={tenantId} periodDays={period} />
           </div>
-        )}
 
-        {/* Events Tab */}
-        {activeTab === 'events' && (
-          <EventsTable
-            events={events?.data || []}
-            isLoading={eventsLoading}
-            pagination={events?.pagination}
-          />
-        )}
+          {/* Dispatch and Match Rate */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Dispatch Status */}
+            <DispatchStatusCard tenantId={tenantId} periodDays={period} />
 
-        {/* Failures Tab */}
-        {activeTab === 'failures' && (
-          <FailuresMonitor
-            metrics={metrics}
-            isLoading={metricsLoading}
-          />
-        )}
+            {/* Match Rate Card */}
+            <MatchRateCard tenantId={tenantId} periodDays={period} />
+          </div>
 
-        {/* Match Rate Tab */}
-        {activeTab === 'match-rate' && (
-          <MatchRateChart
-            data={matchRate}
-            isLoading={matchRateLoading}
-            period={period}
-          />
-        )}
-
-        {/* Performance Tab */}
-        {activeTab === 'performance' && (
-          <PerformanceChart
-            data={performance}
-            isLoading={performanceLoading}
-            period={period}
-          />
-        )}
-
-        {/* Export Tab */}
-        {activeTab === 'export' && (
-          <ExportPanel
-            period={period}
-            onPeriodChange={setPeriod}
-          />
-        )}
+          {/* Recent Conversions Table */}
+          <RecentConversionsTable tenantId={tenantId} limit={10} />
+        </div>
       </main>
     </div>
   );

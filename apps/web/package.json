@@ -13,6 +13,11 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@nextui-org/card": "^2.2.9",
+    "@nextui-org/chip": "^2.2.6",
+    "@nextui-org/progress": "^2.2.6",
+    "@nextui-org/spinner": "^2.2.6",
+    "@nextui-org/table": "^2.2.8",
     "@tanstack/react-query": "^5.90.21",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
