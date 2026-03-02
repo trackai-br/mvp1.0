@@ -185,7 +185,8 @@ async function bootstrap() {
   // Webhook de conversão PerfectPay (tenant já provisionado)
   app.post('/api/v1/webhooks/perfectpay/:tenantId', async (request, reply) => {
     const { tenantId } = request.params as { tenantId: string };
-    const signature = request.headers['x-perfectpay-signature'] as string | undefined;
+    // Suporta ambos x-signature e x-perfectpay-signature
+    const signature = (request.headers['x-signature'] || request.headers['x-perfectpay-signature']) as string | undefined;
 
     // Get raw body from plugin (preserves original formatting for HMAC validation)
     const rawBody = (request as { rawBody: string }).rawBody;
@@ -218,7 +219,7 @@ async function bootstrap() {
       return reply.code(404).send({ message: 'Sessao nao encontrada para webhook.' });
     }
 
-    if (session.webhook.token !== params.token) {
+    if (session.webhook?.token !== params.token) {
       return reply.code(401).send({ message: 'Token de webhook invalido.' });
     }
 
