@@ -440,6 +440,120 @@ O sistema de onboarding está pronto para:
 
 ---
 
+## 🚀 STORY 008 — Generic Webhook Receiver (IMPLEMENTADA)
+
+**Data:** 2026-03-02 23:35-00:10
+**Status:** ✅ IMPLEMENTADO + TESTADO + COMMITTED
+**Commit:** 0fb1085
+
+### O que foi feito
+
+1. **Normalização de Dados (normalize-conversion.ts)**
+   - ✅ Função `normalizeHotmartConversion()` — extrai dados do Hotmart
+   - ✅ Função `normalizeKiwifyConversion()` — extrai dados do Kiwify
+   - ✅ Função `normalizeStripeConversion()` — extrai dados do Stripe (em centavos → real)
+   - ✅ Função `normalizePagSeguroConversion()` — extrai dados do PagSeguro
+   - ✅ Interface `NormalizedConversion` — formato standard para todos os gateways
+   - ✅ Função `createIdentityHashes()` — LGPD SHA-256 hashing
+
+2. **Webhook Handlers para 4 Gateways**
+   - ✅ `hotmart-webhook-handler.ts` — HMAC-SHA256 validation
+   - ✅ `kiwify-webhook-handler.ts` — HMAC-SHA256 validation
+   - ✅ `stripe-webhook-handler.ts` — Stripe signature (t=timestamp,v1=sig)
+   - ✅ `pagseguro-webhook-handler.ts` — HMAC-SHA256 validation
+   - ✅ Todos os handlers integram com Story 007 matching engine
+   - ✅ Idempotência via dedupeRegistry (unique tenantId + eventId)
+
+3. **Router Corrigido (webhook-router.ts)**
+   - ✅ Convertido de `require()` para ES6 `import()` dinâmicos
+   - ✅ Fixed: referência a `match-engine.js` → `matching-engine.js`
+   - ✅ Updated: chamada a `matchConversion()` → `processConversionWebhook()`
+   - ✅ Async adapter factory: `getWebhookAdapter(gateway)` → await
+   - ✅ Resposta 202: Accept imediatamente, processing assíncrono
+
+4. **Testes Automatizados (story-008-generic-webhooks.spec.ts)**
+   - ✅ Teste Hotmart com payload real + HMAC signature
+   - ✅ Teste Kiwify com payload real + HMAC signature
+   - ✅ Teste Stripe com timestamp-based signature
+   - ✅ Validações: OK (202), conversionId criado
+
+### Como Funciona
+
+**Fluxo por Gateway:**
+
+1. **Hotmart:**
+   ```
+   POST /api/v1/webhooks/hotmart/{tenantId}
+   Header: X-Hotmart-Signature: HMAC-SHA256(secret, body)
+   Body: { id, status, purchase, buyer, fbc, fbp }
+
+   ✓ Validação HMAC
+   ✓ Normalização (buyer name → first/last)
+   ✓ Identity creation (email/phone hashes)
+   ✓ Conversion creation
+   ✓ Matching engine call
+   → HTTP 202 Accepted
+   ```
+
+2. **Kiwify:**
+   ```
+   POST /api/v1/webhooks/kiwify/{tenantId}
+   Header: X-Kiwify-Signature: HMAC-SHA256(secret, body)
+   Body: { event: "sale.completed", id, data: {...} }
+
+   ✓ Validação HMAC
+   ✓ Normalização (nested data structure)
+   ✓ Identity creation
+   ✓ Conversion creation
+   ✓ Matching engine call
+   → HTTP 202 Accepted
+   ```
+
+3. **Stripe:**
+   ```
+   POST /api/v1/webhooks/stripe/{tenantId}
+   Header: Stripe-Signature: t={timestamp},v1={signature}
+   Body: { id: "evt_...", type: "charge.succeeded", data: {...} }
+
+   ✓ Validação Stripe-Signature (timestamp + HMAC)
+   ✓ Normalização (amount em centavos → real)
+   ✓ Extração metadata (fbp, fbc from metadata)
+   ✓ Conversion creation
+   ✓ Matching engine call
+   → HTTP 202 Accepted
+   ```
+
+4. **PagSeguro:**
+   ```
+   POST /api/v1/webhooks/pagseguro/{tenantId}
+   Header: X-PagSeguro-Signature: HMAC-SHA256(secret, body)
+   Body: { id, status: "3" (paid), sender: {...}, items: [...] }
+
+   ✓ Validação HMAC
+   ✓ Normalização (status codes → event type)
+   ✓ Phone formatting (area code + number)
+   ✓ Conversion creation
+   ✓ Matching engine call
+   → HTTP 202 Accepted
+   ```
+
+### Database Integration
+
+- ✅ WebhookRaw created via upsert (dedup via unique constraint)
+- ✅ Conversion created with all 15+ Meta CAPI parameters (hashed PII)
+- ✅ Identity records created for email/phone hashing
+- ✅ Matching engine integrates automatically (Story 007)
+- ✅ Response includes: webhookRawId, conversionId, matchedClickId, matchScore
+
+### Limitações & Design Decisions
+
+- ✅ Matching é **async** — não bloqueia resposta 202
+- ✅ Timeout em matching engine **não falha** o webhook (logged + continues)
+- ✅ Email/phone matching virá em Story 009+ (currently FBP/FBC only)
+- ✅ SQS dispatch to Meta CAPI virá em Story 009
+
+---
+
 ## ✅ VERIFICAÇÃO FINAL
 
 **Código:**

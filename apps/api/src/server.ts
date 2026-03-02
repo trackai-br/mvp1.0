@@ -27,6 +27,7 @@ import { handleKiwifyWebhook } from './kiwify-webhook-handler.js';
 import { handleStripeWebhook } from './stripe-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
 import { register as registerAnalyticsRoutes } from './routes/analytics.js';
+import { register as registerDispatchRoutes } from './routes/dispatch.js';
 // import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js'; // Story 010 (analytics dashboard)
 import { prisma } from './db.js';
 
@@ -307,6 +308,9 @@ async function bootstrap() {
 
   // Register analytics routes (Story 010: Dashboard Operacional)
   await registerAnalyticsRoutes(app);
+
+  // Register dispatch routes (Story 009: Meta CAPI Dispatch)
+  await registerDispatchRoutes(app);
 
   // Start analytics refresh job (Story 011g-b: 5 min interval)
   // TODO: Fix TLS issue with analytics job - temporarily disabled
