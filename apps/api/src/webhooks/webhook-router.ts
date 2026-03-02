@@ -1,6 +1,6 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { normalizeConversion } from './conversion-normalizer.js';
-import { matchConversion } from '../match-engine.js';
+import { processConversionWebhook } from '../matching-engine.js';
 
 /**
  * Generic webhook adapter interface.
@@ -75,24 +75,28 @@ export interface NormalizedWebhookEvent {
 /**
  * Factory function to get the correct adapter for a gateway.
  */
-export function getWebhookAdapter(gateway: string): WebhookAdapter {
+export async function getWebhookAdapter(gateway: string): Promise<WebhookAdapter> {
   switch (gateway.toLowerCase()) {
-    case 'hotmart':
-      // Lazy import to avoid circular dependencies
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./hotmart-adapter').HotmartAdapter;
-    case 'kiwify':
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./kiwify-adapter').KiwifyAdapter;
-    case 'stripe':
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./stripe-adapter').StripeAdapter;
-    case 'pagseguro':
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./pagseguro-adapter').PagSeguroAdapter;
-    case 'perfectpay':
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('./perfectpay-adapter').PerfectPayAdapter;
+    case 'hotmart': {
+      const { HotmartAdapter } = await import('./hotmart-adapter.js');
+      return new HotmartAdapter();
+    }
+    case 'kiwify': {
+      const { KiwifyAdapter } = await import('./kiwify-adapter.js');
+      return new KiwifyAdapter();
+    }
+    case 'stripe': {
+      const { StripeAdapter } = await import('./stripe-adapter.js');
+      return new StripeAdapter();
+    }
+    case 'pagseguro': {
+      const { PagSeguroAdapter } = await import('./pagseguro-adapter.js');
+      return new PagSeguroAdapter();
+    }
+    case 'perfectpay': {
+      const { PerfectPayAdapter } = await import('./perfectpay-adapter.js');
+      return new PerfectPayAdapter();
+    }
     default:
       throw new Error(`Unsupported gateway: ${gateway}`);
   }
@@ -114,7 +118,7 @@ export async function registerWebhookRoutes(app: FastifyInstance) {
       const { prisma } = await import('../db.js');
 
       // Get the appropriate adapter
-      const adapter = getWebhookAdapter(gateway);
+      const adapter = await getWebhookAdapter(gateway);
 
       // 1. Buscar tenant e webhook secret (temporariamente usar default para MVP)
       const tenant = await prisma.tenant.findUnique({
@@ -205,15 +209,23 @@ export async function registerWebhookRoutes(app: FastifyInstance) {
         },
       });
 
-      // 7. Execute Match Engine (Story 008) — attempt to match with Click
+      // 7. Execute Match Engine (Story 007) — attempt to match with Click
       let matchResult;
       try {
-        matchResult = await matchConversion({
+        matchResult = await processConversionWebhook(
           tenantId,
-          gateway: gateway.toLowerCase() as 'hotmart' | 'kiwify' | 'stripe' | 'pagseguro' | 'perfectpay',
-          webhookRawId: webhookRaw.id,
-          event,
-        });
+          webhookRaw.id,
+          gateway.toLowerCase(),
+          event.eventId,
+          {
+            email: event.customerEmail,
+            phone: event.customerPhone,
+            fbp: event.fbp,
+            fbc: event.fbc,
+            amount: event.amount,
+            currency: event.currency,
+          }
+        );
       } catch (matchErr) {
         app.log.warn(
           {
@@ -237,6 +249,7 @@ export async function registerWebhookRoutes(app: FastifyInstance) {
           eventType: event.eventType,
           matchStrategy: matchResult?.matchStrategy,
           matchedClickId: matchResult?.matchedClickId,
+          matchScore: matchResult?.matchScore,
         },
         'Webhook processed and matched'
       );
@@ -246,9 +259,10 @@ export async function registerWebhookRoutes(app: FastifyInstance) {
         ok: true,
         webhookRawId: webhookRaw.id,
         conversionId: conversion.id,
-        matchLogId: matchResult?.matchLogId,
         eventId: event.eventId,
         gateway: event.gateway,
+        matchedClickId: matchResult?.matchedClickId,
+        matchScore: matchResult?.matchScore,
         message: 'Webhook accepted and matched',
       });
     } catch (err) {
