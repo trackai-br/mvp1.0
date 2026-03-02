@@ -1,0 +1,8 @@
+FROM postgres:15-alpine
+
+ENV POSTGRES_USER=postgres
+ENV POSTGRES_PASSWORD=postgres
+ENV POSTGRES_DB=tracking
+ENV POSTGRES_INITDB_ARGS="-c listen_addresses='*' -A trust"
+
+EXPOSE 5432

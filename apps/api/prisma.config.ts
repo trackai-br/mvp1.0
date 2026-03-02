@@ -3,13 +3,13 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import { defineConfig } from 'prisma/config';
 
-// Carregar .env.local primeiro (como server.ts faz)
+// CRITICAL: Load environment variables BEFORE usage
+// This ensures .env.local (Supabase Cloud) is available
 const envPath = path.resolve(process.cwd(), '../../infra/secrets/.env.local');
 if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
+  dotenv.config({ path: envPath, override: true });
 } else {
-  // Fallback para .env padrão (ou nada se não existir)
-  dotenv.config();
+  dotenv.config({ override: true });
 }
 
 export default defineConfig({

@@ -7,6 +7,10 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 function createPrisma() {
   const connectionString = process.env.DATABASE_URL || '';
 
+  if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is not set. Check .env.local or init-env.ts');
+  }
+
   // Connection string já contém sslmode=disable para local
   // Prisma PgAdapter respeita PGSSLMODE env var
   const pool = new Pool({ connectionString });

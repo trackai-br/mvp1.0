@@ -1,6 +1,7 @@
-import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs';
+// CRITICAL: This MUST be the first import
+// It loads .env.local BEFORE any other imports execute
+import './init-env.js';
+
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import sensible from '@fastify/sensible';
@@ -28,12 +29,6 @@ import { registerWebhookRoutes } from './webhooks/webhook-router.js';
 import { register as registerAnalyticsRoutes } from './routes/analytics.js';
 import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js';
 import { prisma } from './db.js';
-
-// Load environment variables from .env.local if it exists
-const envPath = path.resolve(process.cwd(), '../../infra/secrets/.env.local');
-if (fs.existsSync(envPath)) {
-  dotenv.config({ path: envPath });
-}
 
 type PerfectPayWebhookParams = {
   sessionId: string;
