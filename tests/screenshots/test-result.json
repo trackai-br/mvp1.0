@@ -1,0 +1,16 @@
+{
+  "success": true,
+  "webhookUrl": "http://localhost:3000/api/v1/webhooks/perfectpay/23a8a5f8-51d6-4ae7-89d0-64af8527bf6f/c4d00a89e2a248efb989ebfff3e7b635",
+  "timestamp": "2026-03-02T19:44:07.541Z",
+  "screenshots": [
+    "01-step1-initial.png",
+    "02-step1-scan-done.png",
+    "03-step1-gtm-selected.png",
+    "04-step2-start.png",
+    "05-step2-meta-filled.png",
+    "06-step2-facebook-connected.png",
+    "07-step3-start.png",
+    "08-step3-gateway-filled.png",
+    "09-step4-complete.png"
+  ]
+}
