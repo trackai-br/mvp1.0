@@ -1,7 +1,8 @@
-import type { Conversion } from '@prisma/client';
+import type { Conversion, ErrorType } from '@prisma/client';
 import { prisma } from '../db.js';
 import { MetaCAPIClient } from '../meta-capi/client.js';
 import { formatConversionToCAPI, validateConversionForCAP } from '../meta-capi/formatter.js';
+import { analyzeError, getErrorDescription } from './error-classifier.js';
 
 /**
  * Dispatch Service
@@ -51,12 +52,13 @@ export async function dispatchConversionToMeta(
   const client = new MetaCAPIClient();
   const result = await client.sendConversions(pixelId, payload);
 
-  // 6. Log attempt
+  // 6. Log attempt with error classification
   await logDispatchAttempt(
     conversion.tenantId,
     conversion.gatewayEventId,
     result.success ? 'success' : 'failed',
-    result.error || undefined
+    result.error || undefined,
+    result.httpStatusCode
   );
 
   // 7. Update conversion record if successful
@@ -93,13 +95,14 @@ export async function dispatchConversionToMeta(
 }
 
 /**
- * Log a dispatch attempt for audit trail
+ * Log a dispatch attempt for audit trail with intelligent retry classification
  */
 async function logDispatchAttempt(
   tenantId: string,
   eventId: string,
   status: 'success' | 'failed',
-  error?: string
+  error?: string,
+  httpStatusCode?: number
 ): Promise<void> {
   // Get current attempt number for this event
   const existingAttempts = await prisma.dispatchAttempt.findMany({
@@ -110,6 +113,20 @@ async function logDispatchAttempt(
 
   const attemptNumber = (existingAttempts[0]?.attempt ?? 0) + 1;
 
+  // Classify error and determine retry strategy (Story 011)
+  let isRetryable = false;
+  let errorType: ErrorType | undefined;
+  let nextRetryAt: Date | undefined;
+
+  if (status === 'failed' && error) {
+    const classification = analyzeError(httpStatusCode, error, attemptNumber);
+    isRetryable = classification.isRetryable;
+    errorType = classification.errorType;
+    if (isRetryable && classification.nextRetryDelayMs > 0) {
+      nextRetryAt = new Date(Date.now() + classification.nextRetryDelayMs);
+    }
+  }
+
   await prisma.dispatchAttempt.create({
     data: {
       tenantId,
@@ -117,11 +134,17 @@ async function logDispatchAttempt(
       attempt: attemptNumber,
       status: status === 'success' ? 'success' : 'failed',
       error,
+      httpStatusCode,
+      errorType,
+      isRetryable,
+      nextRetryAt,
+      maxRetriesExceeded: attemptNumber >= 3 && isRetryable,
     },
   });
 
+  const errorDesc = errorType ? getErrorDescription(errorType) : '';
   console.log(
-    `[dispatch] Logged attempt #${attemptNumber} for ${eventId}: ${status}${error ? ` (${error})` : ''}`
+    `[dispatch] Logged attempt #${attemptNumber} for ${eventId}: ${status}${error ? ` (${error})` : ''}${isRetryable ? ' [RETRYABLE]' : ' [NO RETRY]'} ${errorDesc}`
   );
 }
 
