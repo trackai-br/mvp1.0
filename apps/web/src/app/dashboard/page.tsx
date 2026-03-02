@@ -18,6 +18,7 @@ import { ConversionsChart } from '@/components/dashboard/ConversionsChart';
 import { GatewayDistribution } from '@/components/dashboard/GatewayDistribution';
 import { DispatchStatusCard } from '@/components/dashboard/DispatchStatusCard';
 import { MatchRateCard } from '@/components/dashboard/MatchRateCard';
+import { FailureAnalysisCard } from '@/components/dashboard/FailureAnalysisCard';
 import { RecentConversionsTable } from '@/components/dashboard/RecentConversionsTable';
 
 type Period = 7 | 30 | 90;
@@ -91,6 +92,9 @@ export default function DashboardPage() {
             {/* Match Rate Card */}
             <MatchRateCard tenantId={tenantId} periodDays={period} />
           </div>
+
+          {/* Failure Analysis (Story 011) */}
+          <FailureAnalysisCard tenantId={tenantId} periodDays={period} />
 
           {/* Recent Conversions Table */}
           <RecentConversionsTable tenantId={tenantId} limit={10} />
