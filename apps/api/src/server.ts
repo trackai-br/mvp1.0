@@ -11,6 +11,9 @@ import {
   setupSessionStatusSchema,
   clickIngestSchema,
   perfectPayWebhookSchema,
+  hotmartWebhookSchema,
+  kiwifyWebhookSchema,
+  stripeWebhookSchema,
 } from '@hub/shared';
 import { createSetupSession, getSetupSession, saveSetupSession } from './setup-store.js';
 import { runValidations } from './validation.js';
@@ -18,6 +21,9 @@ import { handleClickIngest } from './click-handler.js';
 import { handlePageviewIngest } from './pageview-handler.js';
 import { handleCheckoutIngest } from './checkout-handler.js';
 import { handlePerfectPayWebhook } from './perfectpay-webhook-handler.js';
+import { handleHotmartWebhook } from './hotmart-webhook-handler.js';
+import { handleKiwifyWebhook } from './kiwify-webhook-handler.js';
+import { handleStripeWebhook } from './stripe-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
 import { register as registerAnalyticsRoutes } from './routes/analytics.js';
 import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js';
@@ -221,6 +227,81 @@ async function bootstrap() {
       provider: 'perfectpay',
       payload: request.body
     }, 'Perfect Pay webhook recebido');
+
+    return reply.code(202).send({ ok: true });
+  });
+
+  // Webhook de conversão Hotmart
+  app.post('/api/v1/webhooks/hotmart/:tenantId', async (request, reply) => {
+    const { tenantId } = request.params as { tenantId: string };
+    const signature = request.headers['x-hotmart-signature'] as string | undefined;
+    const rawBody = (request as { rawBody: string }).rawBody;
+
+    const parsed = hotmartWebhookSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send(parsed.error.flatten());
+    }
+
+    const result = await handleHotmartWebhook(tenantId, parsed.data, rawBody, signature);
+
+    if ('error' in result) {
+      if (result.error === 'invalid_signature') {
+        return reply.code(401).send({ message: 'Assinatura invalida.' });
+      }
+      if (result.error === 'tenant_not_found') {
+        return reply.code(404).send({ message: 'Tenant nao encontrado.' });
+      }
+    }
+
+    return reply.code(202).send({ ok: true });
+  });
+
+  // Webhook de conversão Kiwify
+  app.post('/api/v1/webhooks/kiwify/:tenantId', async (request, reply) => {
+    const { tenantId } = request.params as { tenantId: string };
+    const signature = request.headers['x-kiwify-signature'] as string | undefined;
+    const rawBody = (request as { rawBody: string }).rawBody;
+
+    const parsed = kiwifyWebhookSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send(parsed.error.flatten());
+    }
+
+    const result = await handleKiwifyWebhook(tenantId, parsed.data, rawBody, signature);
+
+    if ('error' in result) {
+      if (result.error === 'invalid_signature') {
+        return reply.code(401).send({ message: 'Assinatura invalida.' });
+      }
+      if (result.error === 'tenant_not_found') {
+        return reply.code(404).send({ message: 'Tenant nao encontrado.' });
+      }
+    }
+
+    return reply.code(202).send({ ok: true });
+  });
+
+  // Webhook de conversão Stripe
+  app.post('/api/v1/webhooks/stripe/:tenantId', async (request, reply) => {
+    const { tenantId } = request.params as { tenantId: string };
+    const signatureHeader = request.headers['stripe-signature'] as string | undefined;
+    const rawBody = (request as { rawBody: string }).rawBody;
+
+    const parsed = stripeWebhookSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send(parsed.error.flatten());
+    }
+
+    const result = await handleStripeWebhook(tenantId, parsed.data, rawBody, signatureHeader);
+
+    if ('error' in result) {
+      if (result.error === 'invalid_signature') {
+        return reply.code(401).send({ message: 'Assinatura invalida.' });
+      }
+      if (result.error === 'tenant_not_found') {
+        return reply.code(404).send({ message: 'Tenant nao encontrado.' });
+      }
+    }
 
     return reply.code(202).send({ ok: true });
   });
