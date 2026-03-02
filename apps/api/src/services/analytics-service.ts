@@ -1,4 +1,5 @@
 import { prisma } from '../db.js';
+import type { GatewayType } from '@prisma/client';
 
 /**
  * Analytics Service
@@ -70,13 +71,13 @@ export async function getDashboardSummary(
   const clickWhere = {
     tenantId,
     createdAt: { gte: startDate, lte: now },
-    ...(gateway && { gateway: gateway as any }),
+    ...(gateway && { gateway: gateway as GatewayType }),
   };
 
   const conversionWhere = {
     tenantId,
     createdAt: { gte: startDate, lte: now },
-    ...(gateway && { gateway: gateway as any }),
+    ...(gateway && { gateway: gateway as GatewayType }),
   };
 
   // Query clicks
@@ -186,7 +187,7 @@ export async function getConversionTimeseries(
     where: {
       tenantId,
       createdAt: { gte: startDate, lte: now },
-      ...(gateway && { gateway: gateway as any }),
+      ...(gateway && { gateway: gateway as GatewayType }),
     },
     select: {
       createdAt: true,
