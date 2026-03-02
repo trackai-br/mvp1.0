@@ -27,7 +27,7 @@ import { handleKiwifyWebhook } from './kiwify-webhook-handler.js';
 import { handleStripeWebhook } from './stripe-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
 import { register as registerAnalyticsRoutes } from './routes/analytics.js';
-import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js';
+// import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js'; // Story 010 (analytics dashboard)
 import { prisma } from './db.js';
 
 type PerfectPayWebhookParams = {

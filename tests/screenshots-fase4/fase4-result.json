@@ -1,0 +1,22 @@
+{
+  "phase": "FASE 4 — Real Credentials",
+  "status": "PASSED",
+  "timestamp": "2026-03-02T20:04:01.984Z",
+  "webhookUrl": "http://localhost:3000/api/v1/webhooks/perfectpay/ce5fad52-fb99-43b2-8d29-212c392f5448/f9c3c458b7d24bf1891b6794c03ebc0a",
+  "credentials": {
+    "pixelId": "2155947491900053",
+    "accountId": "act_1575837469917498",
+    "gateway": "perfectpay",
+    "landingPage": "Senalesdelbenja.online/cr3_ad01"
+  },
+  "screenshots": [
+    "01-step1-start.png",
+    "02-step1-gtm.png",
+    "03-step2-start.png",
+    "04-step2-meta-filled.png",
+    "05-step2-connected.png",
+    "06-step3-start.png",
+    "07-step3-gateway.png",
+    "08-step4-complete.png"
+  ]
+}

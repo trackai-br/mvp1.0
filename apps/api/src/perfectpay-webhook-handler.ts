@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { PerfectPayWebhookBody } from '@hub/shared';
 import { prisma } from './db.js';
+import { processConversionWebhook } from './matching-engine.js';
 
 export type PerfectPayHandlerDeps = {
   getSecret?: () => string | undefined;
@@ -36,7 +37,7 @@ export async function handlePerfectPayWebhook(
   signature: string | undefined,
   deps: PerfectPayHandlerDeps = {}
 ): Promise<
-  | { ok: true; eventId: string; isDuplicate: boolean }
+  | { ok: true; eventId: string; isDuplicate: boolean; conversionId?: string; matchScore?: number }
   | { error: 'invalid_signature' | 'tenant_not_found' }
 > {
   // 1. Validar assinatura HMAC-SHA256 (timing-safe comparison)
@@ -89,5 +90,50 @@ export async function handlePerfectPayWebhook(
 
   const isNew = await insertDedupe({ tenantId: tenant.id, eventId });
 
-  return { ok: true, eventId, isDuplicate: !isNew };
+  // 7. Se webhook é novo (não duplicado), executar matching engine (Story 007)
+  let conversionId: string | undefined;
+  let matchScore: number | undefined;
+
+  if (isNew) {
+    try {
+      // Precisa criar WebhookRaw primeiro para referenciar na Conversion
+      const webhookRaw = await prisma.webhookRaw.create({
+        data: {
+          tenantId: tenant.id,
+          gateway: 'perfectpay' as const,
+          gatewayEventId: eventId,
+          rawPayload: body as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+          eventType: 'purchase_approved',
+        },
+      });
+
+      const matchResult = await processConversionWebhook(
+        tenant.id,
+        webhookRaw.id,
+        'perfectpay',
+        eventId,
+        {
+          email: body.customer?.email,
+          phone: body.customer?.phone,
+          // Note: FBP/FBC would come from the browser context, not from webhook
+          // For now, matching relies on other methods (email/phone via session)
+          amount: body.amount,
+          currency: body.currency,
+        }
+      );
+
+      if (matchResult.success && matchResult.conversionId) {
+        conversionId = matchResult.conversionId;
+        matchScore = matchResult.matchScore;
+        console.log(
+          `[perfectpay-webhook] ✓ Conversion created and matched (score: ${matchScore})`
+        );
+      }
+    } catch (error) {
+      console.error('[perfectpay-webhook] Error in matching engine:', error);
+      // Don't fail the webhook on matching error - continue with conversion creation
+    }
+  }
+
+  return { ok: true, eventId, isDuplicate: !isNew, conversionId, matchScore };
 }
