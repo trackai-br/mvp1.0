@@ -309,26 +309,41 @@ async function getMatchRate(request: FastifyRequest, reply: FastifyReply) {
   const { start, end } = getDateRange(period);
 
   try {
-    let query = `
-      SELECT
-        date,
-        total_conversions,
-        matched_conversions,
-        match_rate_pct
-      FROM v_match_rate_by_tenant
-      WHERE tenant_id = ${tenantId}::uuid
-        AND date >= ${start.toISOString().split('T')[0]}::date
-        AND date <= ${end.toISOString().split('T')[0]}::date
-    `;
-
-    if (gateway) {
-      query += ` AND gateway = '${gateway}'`;
-    }
-
-    query += ` ORDER BY date DESC`;
+    const startDate = start.toISOString().split('T')[0];
+    const endDate = end.toISOString().split('T')[0];
 
     interface MatchRateTrend { date: string; match_rate_pct: number }
-    const matchRate = await prisma.$queryRaw<MatchRateTrend[]>(query as any);
+    let matchRate: MatchRateTrend[];
+
+    // Parametrize gateway to prevent SQL injection
+    if (gateway) {
+      matchRate = await prisma.$queryRaw<MatchRateTrend[]>`
+        SELECT
+          date,
+          total_conversions,
+          matched_conversions,
+          match_rate_pct
+        FROM v_match_rate_by_tenant
+        WHERE tenant_id = ${tenantId}::uuid
+          AND date >= ${startDate}::date
+          AND date <= ${endDate}::date
+          AND gateway = ${gateway}
+        ORDER BY date DESC
+      `;
+    } else {
+      matchRate = await prisma.$queryRaw<MatchRateTrend[]>`
+        SELECT
+          date,
+          total_conversions,
+          matched_conversions,
+          match_rate_pct
+        FROM v_match_rate_by_tenant
+        WHERE tenant_id = ${tenantId}::uuid
+          AND date >= ${startDate}::date
+          AND date <= ${endDate}::date
+        ORDER BY date DESC
+      `;
+    }
 
     // await logAudit(tenantId, (request as any).user.id, 'GET', '/analytics/match-rate', { period, gateway });
 
