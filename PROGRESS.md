@@ -62,6 +62,83 @@ Exemplo: /api/v1/webhooks/perfectpay/7e4519d6-1314-4550-b62a-70cda1df5cb8/e2ddbd
 
 ---
 
+## ✅ FASE 3 — Teste de Integração Click Tracking (COMPLETA)
+
+**Data:** 2026-03-02 21:45-22:15
+**Agentes Utilizados:** @dev (integration testing), @qa (validation)
+
+### Fluxo Testado
+
+```
+1. POST /api/v1/track/click              → Click record criado ✅
+2. POST /api/v1/webhooks/perfectpay/...  → Webhook validado + Identity criada ✅
+3. Database persistence                  → Click, Identity, DedupeRegistry ✅
+4. Story 007 (Matching engine)           → Awaiting implementation ⏳
+5. Story 009 (Meta CAPI dispatch)        → Awaiting implementation ⏳
+```
+
+### Resultados de Validação
+
+| Componente | Count | Status | Descrição |
+|-----------|-------|--------|-----------|
+| **Clicks** | 6 | ✅ FUNCIONA | Ingestion end-to-end operacional |
+| **Identities** | 2 | ✅ CRIADAS | Email/phone hashes (LGPD compliant) |
+| **DedupeRegistry** | 2 | ✅ REGISTRADO | Webhooks deduplicados corretamente |
+| **Conversions** | 0 | ⏳ PENDING | Story 007: matching engine não implementada |
+| **MatchLog** | 0 | ⏳ PENDING | Story 007: correlação clicks ↔ conversões |
+| **DispatchAttempt** | 0 | ⏳ PENDING | Story 009: SQS → Meta CAPI dispatch |
+
+### Descobertas Arquiteturais
+
+1. **Webhook Handler = Validação Rápida**
+   - Recebe webhook, valida assinatura (HMAC-SHA256)
+   - Cria Identity (para LGPD compliance)
+   - Insere em DedupeRegistry (idempotência)
+   - Retorna HTTP 202 Accepted imediatamente
+
+2. **Conversion Creation = Story 007**
+   - Webhook handler NÃO cria Conversion records
+   - Isso é **design intencional** (não é bug)
+   - Story 007 (matching engine) faz a correlação: clicks → conversões
+   - Até lá: dados estão capturados, awaiting matching
+
+3. **LGPD Compliance**
+   - Email/phone são hasheados SHA-256 antes de persistir
+   - Nenhum PII em plaintext no banco
+
+### Testes Executados
+
+```bash
+# 1. Click ingestion
+curl -X POST http://localhost:3001/api/v1/track/click \
+  -H "x-tenant-id: tenant-demo-001" \
+  -H "Content-Type: application/json" \
+  -d '{"fbclid":"...", "fbc":"...", "fbp":"..."}' \
+  # Result: Click ID cmm9lhjob00008cjl0vpzwm95 ✅
+
+# 2. Webhook ingestion + validation
+curl -X POST http://localhost:3001/api/v1/webhooks/perfectpay/tenant-demo-001 \
+  -H "x-signature: $HMAC_SHA256" \
+  -H "Content-Type: application/json" \
+  -d '{"order_id":"...", "customer":{...}}' \
+  # Result: {"ok": true} ✅
+
+# 3. Database validation
+psql $DATABASE_URL -c "SELECT COUNT(*) FROM \"Click\";"       # 6 records ✅
+psql $DATABASE_URL -c "SELECT COUNT(*) FROM \"Identity\";"    # 2 records ✅
+psql $DATABASE_URL -c "SELECT COUNT(*) FROM \"DedupeRegistry\";";  # 2 records ✅
+```
+
+### CONCLUSÃO
+
+**FASE 3 = SUCESSO** ✅
+
+Sistema de click tracking e webhook ingestion está **100% operacional**. Conversions (e Meta CAPI dispatch) serão criadas quando Stories 007 e 009 forem implementadas.
+
+**Próximo Passo:** FASE 4 — Onboard real lead com credenciais reais
+
+---
+
 **Conclusão Anterior (FASE 1 - Docker):**
 - ✅ PostgreSQL Alpine: funciona via socket Unix, não via TCP/IP
 - ✅ PostgreSQL 15 (regular): funciona via socket Unix, não via TCP/IP
