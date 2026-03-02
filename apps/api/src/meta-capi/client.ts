@@ -56,8 +56,9 @@ export class MetaCAPIClient {
   async sendConversions(
     pixelId: string,
     payload: ConversionPayload
-  ): Promise<{ success: boolean; data?: CAPIResponse; error?: string; retries: number }> {
+  ): Promise<{ success: boolean; data?: CAPIResponse; error?: string; httpStatusCode?: number; retries: number }> {
     let lastError: Error | null = null;
+    let lastHttpStatus: number | undefined;
     let retries = 0;
 
     for (let attempt = 0; attempt < this.maxRetries; attempt++) {
@@ -75,6 +76,7 @@ export class MetaCAPIClient {
         };
 
         const response = await this.makeRequest(url.toString(), options, data);
+        lastHttpStatus = response.status;
 
         if (response.status >= 200 && response.status < 300) {
           console.log(
@@ -83,6 +85,7 @@ export class MetaCAPIClient {
           return {
             success: true,
             data: response.body as CAPIResponse,
+            httpStatusCode: response.status,
             retries: attempt,
           };
         }
@@ -92,6 +95,7 @@ export class MetaCAPIClient {
           return {
             success: false,
             error: `CAPI returned ${response.status}: ${JSON.stringify(response.body)}`,
+            httpStatusCode: response.status,
             retries: attempt,
           };
         }
@@ -117,6 +121,7 @@ export class MetaCAPIClient {
     return {
       success: false,
       error: lastError?.message || 'Unknown error',
+      httpStatusCode: lastHttpStatus,
       retries,
     };
   }
