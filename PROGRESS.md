@@ -1280,3 +1280,90 @@ Click (004) → Webhook (008) → Matching (007) → CAPI (009)
 Aguardando: testes manuais ou próximas histórias
 
 ---
+
+## 🔄 STORY 011 — Migration Execution (2026-03-03)
+
+**Data:** 2026-03-03 16:00-16:40
+**Bloqueador:** Migration travada com Prisma + Supabase pooler
+**Solução:** Execução manual via psql + registro em _prisma_migrations
+
+### Problemas Encontrados e Soluções
+
+#### Problema 1: sslmode=no-verify (Causa Raiz Inicial)
+```
+CONNECTION STRING: ...?sslmode=no-verify
+ERROR: psql: error: invalid sslmode value: "no-verify"
+```
+**Solução:** Mudar para `sslmode=require` (valores válidos: disable, allow, prefer, require, verify-ca, verify-full)
+
+#### Problema 2: Prisma x Supabase Pooler Deadlock
+```
+Comando: npx prisma migrate deploy
+ERROR: Schema engine error: ERROR: prepared statement "s1" already exists
+```
+**Causa:** Prisma + Supabase pooler (porta 6543) tem incompatibilidade com prepared statements
+**Solução:** Executar migration SQL manualmente via `psql` em vez de `prisma migrate deploy`
+
+#### Problema 3: Prisma Status Também Travava
+```
+Comando: npx prisma migrate status
+RESULTADO: Comando roda infinitamente (timeout)
+```
+**Solução:** Não usar `prisma migrate status/resolve` — executar SQL direto
+
+### Passos de Execução (Aprovados + Executados)
+
+✅ **Opção A — Source manual + execute migration**
+
+```bash
+# 1. Source environment
+source ../../infra/secrets/.env.local
+
+# 2. Corrigir connection string (.env.local)
+DATABASE_URL=postgresql://postgres.lvphewjjvsrhqihdaikd:...@aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require
+
+# 3. Executar migration SQL manualmente
+cat prisma/migrations/5_add_error_classification/migration.sql | psql -h aws-1-us-east-2.pooler.supabase.com -p 6543 -U postgres.lvphewjjvsrhqihdaikd -d postgres
+
+# 4. Registrar em _prisma_migrations
+INSERT INTO "_prisma_migrations" (...) VALUES (...)
+```
+
+### Validação de Resultado
+
+✅ **ErrorType Enum criado:**
+```sql
+SELECT enum_range(NULL::"ErrorType");
+-- Result: {http_5xx,http_4xx,timeout,unknown}
+```
+
+✅ **5 Colunas adicionadas em DispatchAttempt:**
+```sql
+httpStatusCode     | integer | NULL
+errorType          | ErrorType | NULL
+isRetryable        | boolean | NOT NULL DEFAULT false
+nextRetryAt        | timestamp(3) | NULL
+maxRetriesExceeded | boolean | NOT NULL DEFAULT false
+```
+
+✅ **Índice de Retry criado:**
+```sql
+CREATE INDEX "DispatchAttempt_tenantId_isRetryable_nextRetryAt_idx"
+ON "DispatchAttempt"("tenantId", "isRetryable", "nextRetryAt");
+```
+
+✅ **Migration registrada em _prisma_migrations:**
+```
+id: 5_add_error_classification
+migration_name: 5_add_error_classification
+finished_at: 2026-03-03 16:37:36.694113+00
+```
+
+### Próximo Passo (Opção C — Permanente)
+
+**Implementar:** Atualizar `prisma.config.ts` para não usar Supabase pooler com Prisma
+- Alternativa 1: Usar porta 5432 direct connection (se hostname correto for encontrado)
+- Alternativa 2: Usar connection pooler diferente (pgBouncer) configurado para Prisma
+- Alternativa 3: Para produção, usar AWS RDS PostgreSQL direto (sem pooler)
+
+---
