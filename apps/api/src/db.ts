@@ -11,9 +11,11 @@ function createPrisma() {
     throw new Error('DATABASE_URL environment variable is not set. Check .env.local or init-env.ts');
   }
 
-  // Connection string já contém sslmode=disable para local
-  // Prisma PgAdapter respeita PGSSLMODE env var
-  const pool = new Pool({ connectionString });
+  const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false },
+  });
+
   const adapter = new PrismaPg(pool);
   return new PrismaClient({
     adapter,
