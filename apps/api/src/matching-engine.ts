@@ -14,7 +14,7 @@ export interface MatchingResult {
   conversionId?: string;
   matchedClickId?: string;
   matchScore?: number;
-  matchStrategy?: 'fbp' | 'fbc' | 'none';
+  matchStrategy?: 'fbp' | 'fbc' | 'unmatched';
   reason?: string;
 }
 
@@ -171,7 +171,7 @@ export async function processConversionWebhook(
         gateway: gateway as any, // eslint-disable-line @typescript-eslint/no-explicit-any
         gatewayEventId,
         matchedClickId: matchResult.matchedClickId,
-        matchStrategy: (matchResult.matchStrategy || 'none') as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+        matchStrategy: (matchResult.matchStrategy || 'unmatched') as any, // eslint-disable-line @typescript-eslint/no-explicit-any
         amount: conversionData.amount,
         currency: conversionData.currency || 'BRL',
         emailHash,
