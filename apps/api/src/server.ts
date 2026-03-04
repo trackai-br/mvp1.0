@@ -308,7 +308,7 @@ async function bootstrap() {
   await registerWebhookRoutes(app);
 
   // Register analytics routes (Story 010: Dashboard Operacional)
-  await registerAnalyticsRoutes(app);
+  // await registerAnalyticsRoutes(app); // desativado: rotas duplicadas com analytics-v2
   await registerAnalyticsV2Routes(app);
 
   // Register dispatch routes (Story 009: Meta CAPI Dispatch)
