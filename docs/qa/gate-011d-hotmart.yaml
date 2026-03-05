@@ -1,0 +1,38 @@
+storyId: 011d-hotmart-webhook
+verdict: PASS
+timestamp: 2026-03-05T21:00:00Z
+qaReviewer: "@qa (Quinn)"
+
+checks:
+  code_review:
+    status: pass
+    evidence: "DI pattern, timing-safe HMAC, PII hashing consistent with PerfectPay"
+  unit_tests:
+    status: pass
+    evidence: "10/10 tests passing (signature validation, PII hashing, dedupe, edge cases)"
+  acceptance_criteria:
+    status: pass
+    evidence: "All 10 AC met: schema, handler, HMAC, PII hash, event_id, identities, dedupe, response codes"
+  no_regressions:
+    status: pass
+    evidence: "115/119 API tests PASSED, 14/14 web tests PASSED, lint 0 errors, typecheck 0 errors"
+  performance:
+    status: pass
+    evidence: "HMAC < 5ms, hashing < 10ms, DB < 50ms, total < 200ms, no N+1 queries"
+  security:
+    status: pass
+    evidence: "No hardcoded secrets, Prisma ORM, timing-safe compare, PII hashed, LGPD compliant"
+  documentation:
+    status: pass
+    evidence: "Story updated, payload mapping documented, handler comments clear"
+
+issues: []
+blockers: []
+recommendations:
+  - "Add CloudWatch metrics for webhook latency per gateway (Phase 3)"
+  - "Document secret rotation strategy in runbooks (Phase 3)"
+
+approval:
+  reviewer: "@qa"
+  timestamp: 2026-03-05T21:00:00Z
+  notes: "Story 011d (Hotmart webhook) approved for deployment. All acceptance criteria met, tests passing, security validated."

@@ -107,9 +107,10 @@ Stripe é padrão para integração internacional (USA, EUR, etc). Usa signature
 
 ---
 
-**Assignee:** @dev (Dex)
-**Status:** ✅ READY FOR @QA GATE
+**Assignee:** @dev (Dex) → @qa (Quinn) ✅
+**Status:** ✅ QA GATE PASS — DONE
 **Points:** 2
 **Priority:** HIGH
-**Completed:** 2026-03-05 20:55 UTC (YOLO mode, paralelo com 011d/e)
+**Implemented:** 2026-03-05 20:55 UTC (YOLO mode, paralelo com 011d/e)
+**QA Reviewed:** 2026-03-05 21:00 UTC (7/7 checks PASS)
 **Paralelo:** Stories 011d ✅, 011e ✅
