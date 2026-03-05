@@ -26,7 +26,6 @@ import { handleHotmartWebhook } from './hotmart-webhook-handler.js';
 import { handleKiwifyWebhook } from './kiwify-webhook-handler.js';
 import { handleStripeWebhook } from './stripe-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
-import { register as registerAnalyticsRoutes } from './routes/analytics.js';
 import { register as registerAnalyticsV2Routes } from './routes/analytics-v2.js';
 import { register as registerDispatchRoutes } from './routes/dispatch.js';
 // import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js'; // Story 010 (analytics dashboard)
