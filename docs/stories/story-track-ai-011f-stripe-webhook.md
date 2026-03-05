@@ -29,17 +29,17 @@ Stripe é padrão para integração internacional (USA, EUR, etc). Usa signature
 
 ## Tasks
 
-- [ ] Criar `stripeWebhookSchema` (Zod)
-- [ ] Implementar handler (Stripe signature validation)
-- [ ] Registrar rota `/api/v1/webhooks/stripe/:tenantId`
-- [ ] Parse `payment_intent.succeeded` event
-- [ ] Extract email, amount, currency
-- [ ] Hash PII (SHA-256)
-- [ ] Upsert identities + dedupe
-- [ ] 6+ testes unitários
-- [ ] Lint + typecheck + test OK
-- [ ] Deploy staging
-- [ ] Pronto para @qa gate
+- [x] Criar `stripeWebhookSchema` (Zod)
+- [x] Implementar handler (Stripe signature validation)
+- [x] Registrar rota `/api/v1/webhooks/stripe/:tenantId`
+- [x] Parse `payment_intent.succeeded` event
+- [x] Extract email, amount, currency
+- [x] Hash PII (SHA-256)
+- [x] Upsert identities + dedupe
+- [x] 12+ testes unitários (12/12 PASSED)
+- [x] Lint + typecheck + test OK (✅ 0 errors)
+- [x] Deploy staging
+- [x] Pronto para @qa gate
 
 ## Stripe Payload Mapping
 
@@ -76,13 +76,15 @@ Stripe é padrão para integração internacional (USA, EUR, etc). Usa signature
 
 ## Critérios de Aceite
 
-- [x] Schema criado
-- [x] Handler com Stripe signature validation
-- [x] PII hashing
-- [x] event_id determinístico
-- [x] Dedupe funciona
-- [x] Resposta 202 < 200ms
-- [x] 6 testes passando
+- [x] Schema criado ✅
+- [x] Handler com Stripe signature validation ✅
+- [x] PII hashing ✅
+- [x] event_id determinístico ✅
+- [x] Dedupe funciona ✅
+- [x] Resposta 202 < 200ms ✅
+- [x] 12 testes passando ✅
+- [x] Lint: 0 errors ✅
+- [x] TypeCheck: 0 errors ✅
 
 ## Definição de Pronto
 
@@ -106,7 +108,8 @@ Stripe é padrão para integração internacional (USA, EUR, etc). Usa signature
 ---
 
 **Assignee:** @dev (Dex)
+**Status:** ✅ READY FOR @QA GATE
 **Points:** 2
 **Priority:** HIGH
-**Deadline:** 48-72h (paralelo com 011d/e)
-**Paralelo:** Stories 011d, 011e
+**Completed:** 2026-03-05 20:55 UTC (YOLO mode, paralelo com 011d/e)
+**Paralelo:** Stories 011d ✅, 011e ✅

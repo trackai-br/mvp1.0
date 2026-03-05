@@ -32,18 +32,18 @@ Com PerfectPay deployada e Story 006 validada, próximo passo crítico é integr
 
 ## Tasks
 
-- [ ] Criar `hotmartWebhookSchema` (Zod) em `packages/shared/src/index.ts`
-- [ ] Criar `apps/api/src/hotmart-webhook-handler.ts` com:
-  - [ ] Validação HMAC-SHA256 (timing-safe)
-  - [ ] Hash SHA-256 de email + phone
-  - [ ] Geração event_id determinístico
-  - [ ] Upsert em identities
-  - [ ] Insert idempotente em dedupe_registry
-- [ ] Registrar rota `POST /api/v1/webhooks/hotmart/:tenantId` em `server.ts`
-- [ ] Testes: 8+ cenários, assinatura válida/inválida, dedupe, hash
-- [ ] Build + test: `npm run lint && npm run typecheck && npm test`
-- [ ] Deploy staging + smoke test
-- [ ] Pronto para @qa gate
+- [x] Criar `hotmartWebhookSchema` (Zod) em `packages/shared/src/index.ts`
+- [x] Criar `apps/api/src/hotmart-webhook-handler.ts` com:
+  - [x] Validação HMAC-SHA256 (timing-safe)
+  - [x] Hash SHA-256 de email + phone
+  - [x] Geração event_id determinístico
+  - [x] Upsert em identities
+  - [x] Insert idempotente em dedupe_registry
+- [x] Registrar rota `POST /api/v1/webhooks/hotmart/:tenantId` em `server.ts`
+- [x] Testes: 8+ cenários, assinatura válida/inválida, dedupe, hash (10/10 PASSED)
+- [x] Build + test: `npm run lint && npm run typecheck && npm test` (✅ 0 errors, 10/10 tests)
+- [x] Deploy staging + smoke test
+- [x] Pronto para @qa gate
 
 ## Hotmart Payload Mapping
 
@@ -71,17 +71,19 @@ Com PerfectPay deployada e Story 006 validada, próximo passo crítico é integr
 
 ## Critérios de Aceite
 
-- [x] Schema Zod criado + exported
-- [x] Handler implementado com DI pattern
-- [x] HMAC-SHA256 validado com timing-safe comparison
-- [x] PII (email, phone) hasheada com SHA-256
-- [x] event_id determinístico gerado corretamente
-- [x] Upsert em identities funciona
-- [x] Dedupe via dedupe_registry sem duplicatas
-- [x] Resposta 202 em < 200ms
-- [x] Assinatura inválida → 401
-- [x] Tenant inexistente → 404
-- [x] 8 testes passando (lint OK, typecheck OK)
+- [x] Schema Zod criado + exported ✅
+- [x] Handler implementado com DI pattern ✅
+- [x] HMAC-SHA256 validado com timing-safe comparison ✅
+- [x] PII (email, phone) hasheada com SHA-256 ✅
+- [x] event_id determinístico gerado corretamente ✅
+- [x] Upsert em identities funciona ✅
+- [x] Dedupe via dedupe_registry sem duplicatas ✅
+- [x] Resposta 202 em < 200ms ✅
+- [x] Assinatura inválida → 401 ✅
+- [x] Tenant inexistente → 404 ✅
+- [x] 10 testes passando ✅
+- [x] Lint: 0 errors ✅
+- [x] TypeCheck: 0 errors ✅
 
 ## Pontos de Atenção
 
@@ -112,7 +114,8 @@ Com PerfectPay deployada e Story 006 validada, próximo passo crítico é integr
 ---
 
 **Assignee:** @dev (Dex)
+**Status:** ✅ READY FOR @QA GATE
 **Points:** 3
 **Priority:** HIGH
-**Deadline:** 48-72h (paralelo com 011e/f)
-**Dependency:** 011a/b/c DONE
+**Completed:** 2026-03-05 20:55 UTC (YOLO mode)
+**Dependency:** 011a/b/c DONE ✅
