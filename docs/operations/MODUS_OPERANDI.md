@@ -20,12 +20,14 @@ Current Tasks:       1 running / 1 desired
 
 ---
 
-## 🎯 Entrada Atual (2026-03-05 17:45 UTC)
+## 🎯 Entrada Atual (2026-03-05 18:00 UTC)
 
 **Agente Ativo:** @aios-master (Orion)
-**Objetivo:** Corrigir AWS config + Revisar riscos EPIC-011 → Execução de bloqueadores imediatos
-**Estado Projeto:** Fase final de validação em mock, pronto para MVP go-live
-**Correção:** AWS region/cluster names corrigidos conforme real config
+**Objetivo:** PAUSADO — Validação Local Completa ANTES de qualquer Deploy
+**Estado Projeto:** Bloqueador de Processo Identificado — Deploy prematuro foi evitado
+**Decisão:** Voltar para Phase 0 (validação local) antes de staging/produção
+
+**STATUS:** 🛑 PARADO EM GIT PUSH (não fazer mais nada até Phase 0 completa)
 
 ---
 
@@ -410,6 +412,87 @@ Current Tasks:       1 running / 1 desired
 
 ---
 
-**Last Updated:** 2026-03-05 17:25 UTC
+**2026-03-05 18:00 UTC — @aios-master PAUSA DEPLOY — Validação Local Crítica**
+- 🛑 **PARADO:** Deploy suspenso em git clone (CloudShell)
+- ✅ **Motivo Correto:** Usuário apontou que faltava validação local completa
+- 🔴 **Risco Identificado:** Fazer deploy sem testar localmente = production breakage
+- **Ação:** Voltar para Phase 0 — Local Validation Completa
+
+---
+
+## 📋 NOVO ROADMAP: 3 PHASES (Validação → Staging → Produção)
+
+### 🔴 PHASE 0: LOCAL VALIDATION (AGORA — BLOQUEADOR CRÍTICO)
+
+**Objetivo:** Validar 100% do sistema rodando localmente antes de qualquer deploy
+
+**Checklist:**
+```
+[ ] npm run dev → API (3001) + Web (3000) rodando
+[ ] curl http://localhost:3001/api/v1/health → 200 OK + "db":"connected"
+[ ] Abrir http://localhost:3000 → Wizard carregando
+[ ] POST /api/v1/track/click (teste local) → 201 CREATED
+[ ] POST /api/v1/webhooks/perfectpay/... (webhook mock) → 202 ACCEPTED
+[ ] Verificar dados no banco Supabase
+[ ] Matching engine funciona (click correlação)
+[ ] SQS dispatch queue processa
+[ ] Dashboard mostra métricas
+[ ] Nenhum erro nos logs
+[ ] Performance: latência < 2s
+```
+
+**Success Criteria:**
+- ✅ Sistema roda sem erros
+- ✅ End-to-end flow completo (click → webhook → matching → dispatch)
+- ✅ Documentado em PROGRESS.md
+
+**Owner:** @dev (Dex)
+**Time:** 2-3 horas
+**Blocker For:** Phase 1
+
+---
+
+### 🟡 PHASE 1: STAGING DEPLOY (Depois Phase 0 ✅)
+
+**Objetivo:** Deploy para AWS staging (simula produção com dados de teste)
+
+**Checklist:**
+```
+[ ] Deploy via Story 011.1 para staging ECS service
+[ ] Test com credenciais Supabase staging
+[ ] SQS staging funciona
+[ ] CloudWatch logs aparecem
+[ ] Performance test: 100 clicks/sec
+[ ] Load test: 1000 concurrent requests
+[ ] Alarms disparam (teste manual)
+[ ] Rollback testado
+```
+
+**Owner:** @devops (Gage)
+**Time:** 4-6 horas
+**Blocker For:** Phase 2
+
+---
+
+### 🟢 PHASE 2: PRODUCTION DEPLOY
+
+**Objetivo:** Deploy para produção (real customers)
+
+**Checklist:**
+```
+[ ] Phase 0 + 1 completas ✅
+[ ] Blue-green deploy configurado
+[ ] Smoke test: 1 click → CAPI
+[ ] First customer onboarded
+[ ] Baseline metrics coletadas
+[ ] On-call team ready
+```
+
+**Owner:** @pm (Morgan)
+**Time:** 2 horas (após Phase 0+1 ✅)
+
+---
+
+**Last Updated:** 2026-03-05 18:00 UTC
 **Owner:** @aios-master (Orion)
-**Status:** WAITING FOR @devops — Git Push & Deploy
+**Status:** 🛑 PARADO — Aguardando Phase 0 Local Validation COMPLETA
