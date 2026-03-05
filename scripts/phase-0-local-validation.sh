@@ -114,12 +114,19 @@ echo ""
 SESSION_RESPONSE=$(curl -s -X POST "$API_URL/api/v1/setup/sessions" \
   -H "Content-Type: application/json" \
   -d "{
-    \"tenantId\": \"$TENANT_ID\",
     \"projectName\": \"Test Project\",
     \"trackingEnvironment\": \"lp\",
     \"landingUrl\": \"https://example.com\",
-    \"meta\": {\"accountId\": \"123\", \"token\": \"test-token\"},
-    \"gateway\": {\"name\": \"perfectpay\", \"apiKey\": \"test-key\"}
+    \"meta\": {
+      \"pixelId\": \"123456789\",
+      \"accessToken\": \"test-token-1234567890\",
+      \"adAccountId\": \"987654321\"
+    },
+    \"gateway\": {
+      \"platform\": \"perfectpay\",
+      \"apiKey\": \"test-api-key-123\",
+      \"webhookSecret\": \"test-webhook-secret-123\"
+    }
   }")
 
 echo "Response: $SESSION_RESPONSE"
