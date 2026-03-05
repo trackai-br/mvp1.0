@@ -4,11 +4,28 @@
 
 ---
 
-## 🎯 Entrada Atual (2026-03-05 17:15 UTC)
+## 🌐 AWS Configuration (CRITICAL — Consultar SEMPRE antes de decisão)
+
+```
+Region:              us-east-1
+Account:             751702759697
+ECS Cluster:         hub-server-side-tracking
+ECS Service:         hub-server-side-tracking-api
+ECR Repository:      hub-server-side-tracking-api
+ECR URI:             751702759697.dkr.ecr.us-east-1.amazonaws.com/hub-server-side-tracking-api
+Task Definition:     track-ai-api:3
+Launch Type:         Fargate
+Current Tasks:       1 running / 1 desired
+```
+
+---
+
+## 🎯 Entrada Atual (2026-03-05 17:45 UTC)
 
 **Agente Ativo:** @aios-master (Orion)
-**Objetivo:** Revisar riscos EPIC-011 → Execução de bloqueadores imediatos
+**Objetivo:** Corrigir AWS config + Revisar riscos EPIC-011 → Execução de bloqueadores imediatos
 **Estado Projeto:** Fase final de validação em mock, pronto para MVP go-live
+**Correção:** AWS region/cluster names corrigidos conforme real config
 
 ---
 
