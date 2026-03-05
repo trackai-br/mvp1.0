@@ -424,25 +424,46 @@ Current Tasks:       1 running / 1 desired
 
 ### 🔴 PHASE 0: LOCAL VALIDATION (AGORA — BLOQUEADOR CRÍTICO)
 
+**Status:** 🚀 EM PROGRESSO
+
 **Objetivo:** Validar 100% do sistema rodando localmente antes de qualquer deploy
 
-**Checklist:**
+**Script Automatizado:**
+```bash
+bash scripts/phase-0-local-validation.sh
 ```
-[ ] npm run dev → API (3001) + Web (3000) rodando
-[ ] curl http://localhost:3001/api/v1/health → 200 OK + "db":"connected"
-[ ] Abrir http://localhost:3000 → Wizard carregando
-[ ] POST /api/v1/track/click (teste local) → 201 CREATED
-[ ] POST /api/v1/webhooks/perfectpay/... (webhook mock) → 202 ACCEPTED
-[ ] Verificar dados no banco Supabase
-[ ] Matching engine funciona (click correlação)
-[ ] SQS dispatch queue processa
-[ ] Dashboard mostra métricas
-[ ] Nenhum erro nos logs
-[ ] Performance: latência < 2s
+
+**Teste Manual por Teste:**
+
+#### TEST 1: Health Check ✅ PASSED
+```bash
+curl http://localhost:3001/api/v1/health
+# Esperado: {"status":"ok","db":"connected","project":"Track AI"}
 ```
+**Status:** ✅ PASSED (2026-03-05 18:20 UTC)
+
+#### TEST 2: Frontend Loading ✅ PASSED
+```
+http://localhost:3000
+```
+**Status:** ✅ PASSED (2026-03-05 18:22 UTC)
+
+#### TEST 3: Click Ingestion ⏳ IN PROGRESS
+```bash
+curl -X POST http://localhost:3001/api/v1/track/click \
+  -H "Content-Type: application/json" \
+  -H "x-tenant-id: fcfe64b0-6e3d-498d-a1f2-377626c85b40" \
+  -d '{"fbclid": "test-click-001", "fbc": "fb.1.1234567890.test", "fbp": "fb.1.1234567890.test", "url": "https://example.com/checkout"}'
+# Esperado: {"id":"...", "tenantId":"..."}
+```
+
+#### TEST 4: Setup Session ⏳ PENDING
+#### TEST 5: Database Verification ⏳ PENDING
+#### TEST 6: Logs Check ⏳ PENDING
 
 **Success Criteria:**
 - ✅ Sistema roda sem erros
+- ✅ 6/6 testes passam
 - ✅ End-to-end flow completo (click → webhook → matching → dispatch)
 - ✅ Documentado em PROGRESS.md
 
