@@ -490,25 +490,95 @@ TOTAL:      129 tests PASSED
 
 ---
 
-### 🟡 PHASE 1: STAGING DEPLOY (Depois Phase 0 ✅)
+### 🟡 PHASE 1: STAGING DEPLOY (INICIANDO — 2026-03-05 18:50 UTC)
+
+**Status:** 🚀 EM PROGRESSO
 
 **Objetivo:** Deploy para AWS staging (simula produção com dados de teste)
 
-**Checklist:**
+**Pré-requisitos:**
+- ✅ Phase 0 completo (validação local)
+- ✅ Git push executado (commits em main)
+- ✅ AWS credentials verificadas
+- ✅ ECR login funcionando
+
+**Checklist Detalhado:**
+
+**STEP 1: Build Docker Image (Local ou CloudShell)**
 ```
-[ ] Deploy via Story 011.1 para staging ECS service
-[ ] Test com credenciais Supabase staging
-[ ] SQS staging funciona
-[ ] CloudWatch logs aparecem
-[ ] Performance test: 100 clicks/sec
-[ ] Load test: 1000 concurrent requests
-[ ] Alarms disparam (teste manual)
-[ ] Rollback testado
+[ ] git clone repo em /tmp
+[ ] npm install (instalar dependências)
+[ ] npm run build (compilar código)
+[ ] docker build -t hub-server-side-tracking-api:latest apps/api/
+[ ] Verificar build sem erros
+```
+
+**STEP 2: Push to ECR**
+```
+[ ] docker tag image com ECR URI
+[ ] aws ecr get-login-password (login ECR)
+[ ] docker push para ECR repository
+[ ] Verificar imagem em ECR console
+```
+
+**STEP 3: Deploy to ECS Staging**
+```
+[ ] Criar task definition staging (ou usar revision 3)
+[ ] aws ecs update-service (força novo deployment)
+[ ] Monitorar rollout (target 1 task)
+[ ] Verificar task health (RUNNING status)
+```
+
+**STEP 4: Smoke Tests Staging**
+```
+[ ] curl health endpoint (http://staging-api-url/api/v1/health)
+[ ] Testar click ingestion com dados staging
+[ ] Testar webhook com assinatura real
+[ ] Verificar logs em CloudWatch
+```
+
+**STEP 5: Performance Testing**
+```
+[ ] 100 clicks/sec test (Apache Bench ou wrk)
+[ ] Latency p50/p95/p99 < 2s
+[ ] Memory/CPU usage normal
+[ ] No timeout errors
+```
+
+**STEP 6: Load Testing**
+```
+[ ] 1000 concurrent connections
+[ ] 10 min sustained load
+[ ] Monitor SQS queue depth
+[ ] Verify no queue buildup
+```
+
+**STEP 7: Monitoring Setup**
+```
+[ ] CloudWatch alarms active
+[ ] Custom metrics flowing
+[ ] Logs aggregating
+[ ] Dashboard displaying data
+```
+
+**STEP 8: Rollback Validation**
+```
+[ ] Document rollback procedure
+[ ] Test rollback to previous task definition
+[ ] Verify rollback time < 2 min
 ```
 
 **Owner:** @devops (Gage)
 **Time:** 4-6 horas
 **Blocker For:** Phase 2
+
+**Success Criteria:**
+- ✅ Staging API responding (HTTP 200)
+- ✅ Click ingestion working
+- ✅ Webhooks processing
+- ✅ Performance baseline established
+- ✅ Monitoring live
+- ✅ Rollback tested and ready
 
 ---
 
