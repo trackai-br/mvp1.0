@@ -115,7 +115,11 @@ SESSION_RESPONSE=$(curl -s -X POST "$API_URL/api/v1/setup/sessions" \
   -H "Content-Type: application/json" \
   -d "{
     \"tenantId\": \"$TENANT_ID\",
-    \"projectName\": \"Test Project\"
+    \"projectName\": \"Test Project\",
+    \"trackingEnvironment\": \"lp\",
+    \"landingUrl\": \"https://example.com\",
+    \"meta\": {\"accountId\": \"123\", \"token\": \"test-token\"},
+    \"gateway\": {\"name\": \"perfectpay\", \"apiKey\": \"test-key\"}
   }")
 
 echo "Response: $SESSION_RESPONSE"
