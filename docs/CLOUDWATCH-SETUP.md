@@ -185,3 +185,21 @@ Make sure team has access to:
 **Document Version:** 1.0 (2026-03-06)
 **Last Updated:** @devops (Gage)
 **Status:** Ready for Production Deployment
+
+## Manual Dashboard Creation
+
+Due to credential account mismatch in CI/CD environment, create dashboard manually in AWS Console:
+
+1. **AWS Console** → CloudWatch → Dashboards → Create Dashboard
+2. **Name:** `TrackAI-Production`
+3. **Add widgets:**
+   - Widget 1: Line graph - Queue Depths (SQS DLQ + Main Queue)
+   - Widget 2: Line graph - Dispatch Performance (Throughput + Success Rate)
+   - Widget 3: Line graph - API Latency Percentiles (p50, p95, p99)
+   - Widget 4: Area chart - Resource Utilization (ECS CPU + RDS Connections)
+   - Widget 5: Number widget - Active Alarms Count
+
+4. **Save**
+
+Config template available in: `scripts/dashboard-config.json`
+
