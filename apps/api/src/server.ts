@@ -28,7 +28,7 @@ import { handleStripeWebhook } from './stripe-webhook-handler.js';
 import { registerWebhookRoutes } from './webhooks/webhook-router.js';
 import { register as registerAnalyticsV2Routes } from './routes/analytics-v2.js';
 import { register as registerDispatchRoutes } from './routes/dispatch.js';
-// import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js'; // Story 010 (analytics dashboard)
+import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js'; // Story 011g-b (analytics optimization)
 import { prisma } from './db.js';
 
 type PerfectPayWebhookParams = {
@@ -314,8 +314,7 @@ async function bootstrap() {
   await registerDispatchRoutes(app);
 
   // Start analytics refresh job (Story 011g-b: 5 min interval)
-  // TODO: Fix TLS issue with analytics job - temporarily disabled
-  // startAnalyticsRefreshJob();
+  startAnalyticsRefreshJob();
 
   await app.listen({ port: 3001, host: '0.0.0.0' });
 }
