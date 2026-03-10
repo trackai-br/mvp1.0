@@ -136,7 +136,7 @@ crypto.timingSafeEqual(Buffer.from(providedHmac), Buffer.from(calculatedHmac))
 
 ### ECR (Elastic Container Registry)
 - **O que é:** Registro de imagens Docker na AWS
-- **URI do nosso ECR:** `571944667101.dkr.ecr.us-east-1.amazonaws.com/hub-server-side-tracking-api`
+- **URI do nosso ECR:** `751702759697.dkr.ecr.us-east-1.amazonaws.com/hub-server-side-tracking-api`
 - **Como funciona:** GitHub Actions faz login → compila Docker → push → ECS usa a imagem
 
 ### ECS Fargate (Containers na Nuvem)

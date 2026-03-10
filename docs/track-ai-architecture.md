@@ -8,7 +8,7 @@
 
 ### WAF WebACL — hub-tracking-waf
 
-**ARN:** `arn:aws:wafv2:us-east-1:571944667101:regional/webacl/hub-tracking-waf/d77011e7-2880-4385-ae04-fd17e3d304ec`
+**ARN:** `arn:aws:wafv2:us-east-1:751702759697:regional/webacl/hub-tracking-waf/d77011e7-2880-4385-ae04-fd17e3d304ec`
 **Região:** us-east-1 | **Escopo:** REGIONAL (para ALB)
 
 #### Regras configuradas
@@ -44,7 +44,7 @@ Sem este header, as regras de rate limiting por tenant não funcionam — o WAF 
 # Substituir {ALB_ARN} pelo ARN do seu Application Load Balancer
 aws wafv2 associate-web-acl \
   --region us-east-1 \
-  --web-acl-arn "arn:aws:wafv2:us-east-1:571944667101:regional/webacl/hub-tracking-waf/d77011e7-2880-4385-ae04-fd17e3d304ec" \
+  --web-acl-arn "arn:aws:wafv2:us-east-1:751702759697:regional/webacl/hub-tracking-waf/d77011e7-2880-4385-ae04-fd17e3d304ec" \
   --resource-arn "{ALB_ARN}"
 ```
 

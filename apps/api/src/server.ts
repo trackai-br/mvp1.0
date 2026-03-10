@@ -145,7 +145,19 @@ async function bootstrap() {
 
     const result = await handlePageviewIngest(
       tenantId,
-      body,
+      {
+        url: body.url,
+        referrer: body.referrer as string | null | undefined,
+        title: body.title as string | null | undefined,
+        utmSource: body.utmSource as string | null | undefined,
+        utmMedium: body.utmMedium as string | null | undefined,
+        utmCampaign: body.utmCampaign as string | null | undefined,
+        utmContent: body.utmContent as string | null | undefined,
+        utmTerm: body.utmTerm as string | null | undefined,
+        fbclid: body.fbclid as string | null | undefined,
+        fbc: body.fbc as string | null | undefined,
+        fbp: body.fbp as string | null | undefined,
+      },
       request.ip,
       request.headers['user-agent'] as string | undefined
     );

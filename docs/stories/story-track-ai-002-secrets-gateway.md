@@ -24,7 +24,7 @@ Garantir que o backend de Track AI rode com todos os segredos corretos, que o ba
 ## Critérios de aceite
 - [x] Todos os secrets necessários estão listados e sincronizados nos arquivos locais ignorados (`infra/secrets`).  
 - [x] `npx prisma db execute` e `npx prisma migrate dev --name init` foram executados com sucesso dentro do MCP usando o `DB_URL` definitivo.  
-- [x] Secrets replicados no AWS Secrets Manager com ARN `arn:aws:secretsmanager:us-east-1:571944667101:secret:hub-tracking/production-p5mOB9`.
+- [x] Secrets replicados no AWS Secrets Manager com ARN `arn:aws:secretsmanager:us-east-1:751702759697:secret:hub-tracking/production-p5mOB9`.
 - [x] Guia de configuração do API Gateway + WAF publicado em `docs/track-ai-architecture.md` com regras, limites, rotas protegidas e health check.
 
 ## Definição de pronto
@@ -42,10 +42,10 @@ Garantir que o backend de Track AI rode com todos os segredos corretos, que o ba
 - Sincronizei os segredos e obtive migração no Supabase `db.lvphewjjvsrhqihdaikd`.
 - Documentei a estratégia para o Gateway/WAF como parte do plano do story.
 - Criado usuário IAM `hub-tracking-deploy` com permissões mínimas (APIGateway, WAF, SecretsManager).
-- Secrets replicados no AWS Secrets Manager: `hub-tracking/production` (ARN: `arn:aws:secretsmanager:us-east-1:571944667101:secret:hub-tracking/production-p5mOB9`).
+- Secrets replicados no AWS Secrets Manager: `hub-tracking/production` (ARN: `arn:aws:secretsmanager:us-east-1:751702759697:secret:hub-tracking/production-p5mOB9`).
 - `.env.local` atualizado com `AWS_ACCOUNT_ID` e `AWS_SECRET_NAME_FOR_DB`.
 - `.env.local.example` atualizado com comentários explicativos.
 - Guia de aprendizado criado em `docs/learning/GUIDE.md`.
-- WAF WebACL `hub-tracking-waf` criado na AWS (ARN: `arn:aws:wafv2:us-east-1:571944667101:regional/webacl/hub-tracking-waf/d77011e7-2880-4385-ae04-fd17e3d304ec`).
+- WAF WebACL `hub-tracking-waf` criado na AWS (ARN: `arn:aws:wafv2:us-east-1:751702759697:regional/webacl/hub-tracking-waf/d77011e7-2880-4385-ae04-fd17e3d304ec`).
 - Documentação completa de API Gateway + WAF publicada em `docs/track-ai-architecture.md`.
 - Story 002 concluída.

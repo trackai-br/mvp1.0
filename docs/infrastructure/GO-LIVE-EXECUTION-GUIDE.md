@@ -302,7 +302,7 @@ WHERE tenant_id = 'test-tenant-001';
 
 ```bash
 aws sqs get-queue-attributes \
-  --queue-url https://sqs.us-east-1.amazonaws.com/571944667101/capi-dispatch \
+  --queue-url https://sqs.us-east-1.amazonaws.com/751702759697/capi-dispatch \
   --attribute-names ApproximateNumberOfMessages,ApproximateNumberOfMessagesNotVisible
 
 # Expected: 1 message in flight (being processed)
