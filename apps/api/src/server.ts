@@ -29,6 +29,7 @@ import { registerWebhookRoutes } from './webhooks/webhook-router.js';
 import { register as registerAnalyticsV2Routes } from './routes/analytics-v2.js';
 import { register as registerDispatchRoutes } from './routes/dispatch.js';
 import { startAnalyticsRefreshJob } from './jobs/refresh-analytics-views.js'; // Story 011g-b (analytics optimization)
+import { handleAdminOnboardCustomer } from './admin-onboard-handler.js';
 import { prisma } from './db.js';
 
 type PerfectPayWebhookParams = {
@@ -65,6 +66,18 @@ async function bootstrap() {
     } catch (err) {
       // Retorna 200 para não derrubar o serviço; db_error fica visível no monitoramento
       return reply.send({ status: 'degraded', db: 'unreachable', project: 'Track AI', db_error: String(err) });
+    }
+  });
+
+  // Admin endpoint for customer onboarding (FASE 4: MVP Go-Live)
+  app.post('/api/v1/admin/onboard-customer', async (request, reply) => {
+    try {
+      const result = await handleAdminOnboardCustomer(request.body);
+      return reply.code(201).send(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      app.log.error(error, 'Admin onboard customer failed');
+      return reply.code(400).send({ success: false, message });
     }
   });
 
