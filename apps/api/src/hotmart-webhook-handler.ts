@@ -92,6 +92,24 @@ export async function handleHotmartWebhook(
 
   const isNew = await insertDedupe({ tenantId, eventId });
 
+  // 7. Se webhook é novo, persistir WebhookRaw
+  if (isNew) {
+    try {
+      await prisma.webhookRaw.create({
+        data: {
+          tenantId,
+          gateway: 'hotmart' as const,
+          gatewayEventId: eventId,
+          rawPayload: body as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+          eventType: 'purchase_approved',
+        },
+      });
+    } catch (error) {
+      console.error('[hotmart-webhook] Error persisting WebhookRaw:', error);
+      // Don't fail webhook on persistence error
+    }
+  }
+
   return {
     ok: true,
     eventId,

@@ -142,6 +142,24 @@ export async function handleStripeWebhook(
 
   const isNew = await insertDedupe({ tenantId, eventId });
 
+  // 8. Se webhook é novo, persistir WebhookRaw
+  if (isNew) {
+    try {
+      await prisma.webhookRaw.create({
+        data: {
+          tenantId,
+          gateway: 'stripe' as const,
+          gatewayEventId: eventId,
+          rawPayload: body as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+          eventType: 'payment_intent.succeeded',
+        },
+      });
+    } catch (error) {
+      console.error('[stripe-webhook] Error persisting WebhookRaw:', error);
+      // Don't fail webhook on persistence error
+    }
+  }
+
   return {
     ok: true,
     eventId,
